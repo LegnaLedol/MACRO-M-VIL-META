@@ -1,248 +1,209 @@
+-- =========================================================
+--   REPLICA EXACTA HERMANOS'DEV UI (REDZ LIBRARY CLONE)
+--              GHOUL GRAY EDITION v4 - PVP ONLY
+-- =========================================================
+
+local RedzLibrary = loadstring(game:HttpGet("https://githubusercontent.com"))()
+
+-- Variable global para la foto flotante de Tokyo Ghoul
+local GHOUL_ASSET_ID = "rbxassetid://9073144883"
+
+-- Variables de estado para el PVP Manual
+local pvpAimbotActive = false
+local lockCamActive = false
+local walkSpeedValue = 16
+
 local player = game.Players.LocalPlayer
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-
--- CONFIGURACIÓN RÉPLICA HERMANOS HUB (MANUAL - GRIS GHOUL)
-local GHOUL_ASSET_ID = "rbxassetid://9073144883" -- Foto de la máscara de Kaneki
-local aimPlayers = true
-local aimNPCs = false
-local camLockActive = false
-
-local objetivoActual = nil
 local camera = workspace.CurrentCamera
-local camConnection = nil
-local characterConnection = nil
+local RunService = game:GetService("RunService")
+local camConnection, charConnection
 
--- SISTEMA DE FILTRADO DE HITBOX (Método Hermanos Dev)
-local function obtenerObjetivoHermanos()
+-- ALGORITMO DE HITBOX PROFESIONAL (Filtra solo Jugadores reales en tu campo de visión)
+local function obtenerObjetivoPVP()
     local personajeLocal = player.Character
     if not personajeLocal or not personajeLocal:FindFirstChild("HumanoidRootPart") then return nil end
-    local menorDistancia = math.huge
+    
     local mejorObjetivo = nil
-    local maxRango = 150
+    local menorDistanciaPantalla = math.huge
+    local maxRangoStuds = 150
 
-    local function verificar(modelo)
-        if modelo and modelo:FindFirstChild("HumanoidRootPart") and modelo:FindFirstChildOfClass("Humanoid") then
-            if modelo:FindFirstChildOfClass("Humanoid").Health > 0 and modelo ~= personajeLocal then
-                local hrp = modelo.HumanoidRootPart
-                local distancia = (personajeLocal.HumanoidRootPart.Position - hrp.Position).Magnitude
-                if distancia < menorDistancia and distancia <= maxRango then
-                    menorDistancia = distancia
-                    mejorObjetivo = hrp
+    for _, otroPlayer in ipairs(game.Players:GetPlayers()) do
+        if otroPlayer ~= player and otroPlayer.Character and otroPlayer.Character:FindFirstChild("HumanoidRootPart") and otroPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            if otroPlayer.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
+                local hrp = otroPlayer.Character.HumanoidRootPart
+                local distanciaStuds = (personajeLocal.HumanoidRootPart.Position - hrp.Position).Magnitude
+                
+                if distanciaStuds <= maxRangoStuds then
+                    local vector, enPantalla = camera:WorldToViewportPoint(hrp.Position)
+                    if enPantalla then
+                        local centroPantalla = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+                        local distanciaPantalla = (Vector2.new(vector.X, vector.Y) - centroPantalla).Magnitude
+                        
+                        if distanciaPantalla < menorDistanciaPantalla then
+                            menorDistanciaPantalla = distanciaPantalla
+                            mejorObjetivo = hrp
+                        end
+                    end
                 end
-            end
-        end
-    end
-
-    if aimPlayers then
-        for _, otroPlayer in ipairs(game.Players:GetPlayers()) do
-            if otroPlayer ~= player and otroPlayer.Character then verificar(otroPlayer.Character) end
-        end
-    end
-    if aimNPCs and not mejorObjetivo then
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("Humanoid") and v.Parent and not game.Players:GetPlayerFromCharacter(v.Parent) then
-                verificar(v.Parent)
             end
         end
     end
     return mejorObjetivo
 end
 
+-- CREACIÓN DE LA VENTANA PRINCIPAL (Réplica exacta gris oscuro)
+local Window = RedzLibrary:CreateWindow({
+    Name = "Hermanos'Dev | PVP",
+    SubName = "Blox Fruit | Tokyo Ghoul Ed.",
+    Discord = "https://discord.gg" -- Botón de Discord real como en tu foto
+})
+
+-- CREACIÓN DE SECCIONES LATERALES (Legit:, Rage:, Utility:)
+Window:AddSection({Name = "Legit:"})
+local TabGeneral = Window:CreateTab({Name = "General", Icon = "rbxassetid://4483362458"})
+local TabCombat = Window:CreateTab({Name = "Combat", Icon = "rbxassetid://4483362458"})
+local TabESP = Window:CreateTab({Name = "ESP", Icon = "rbxassetid://4483362458"})
+
+Window:AddSection({Name = "Rage:"})
+local TabKeyBind = Window:CreateTab({Name = "Key Bind", Icon = "rbxassetid://4483362458"})
+local TabMisc = Window:CreateTab({Name = "Misc", Icon = "rbxassetid://4483362458"})
+
+Window:AddSection({Name = "Utility:"})
+local TabServer = Window:CreateTab({Name = "Server", Icon = "rbxassetid://4483362458"})
 -- =========================================================
---      DISEÑO INTERFAZ RÉPLICA HERMANOS HUB (GRIS TÁCTICO)
+--          CONTENIDO PESTAÑA: PLAYER MODIFIER (GENERAL)
 -- =========================================================
-local gui = Instance.new("ScreenGui")
-gui.Name = "HermanosHub_ManualEdition"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
+TabGeneral:AddSection({Name = "Player Modifier:"})
 
--- Contenedor Principal Flotante
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 165, 0, 165)
-mainFrame.Position = UDim2.new(0.78, 0, 0.35, 0)
-mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 20) -- Gris Oscuro
-mainFrame.BackgroundTransparency = 0.05
-mainFrame.Active = true
-mainFrame.Draggable = true -- Arrastrable libremente en móviles
-mainFrame.Parent = gui
-
-local mainCorner = Instance.new("UICorner")
-mainCorner.CornerRadius = UDim.new(0, 10)
-mainCorner.Parent = mainFrame
-
-local mainStroke = Instance.new("UIStroke")
-mainStroke.Thickness = 1.8
-mainStroke.Color = Color3.fromRGB(55, 55, 60) -- Borde Gris Cenizo
-mainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-mainStroke.Parent = mainFrame
-
--- SECCIÓN SUPERIOR (AVATAR GHOUL)
-local profileFrame = Instance.new("Frame")
-profileFrame.Size = UDim2.new(0, 145, 0, 42)
-profileFrame.Position = UDim2.new(0.06, 0, 0.06, 0)
-profileFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
-profileFrame.BackgroundTransparency = 0.3
-profileFrame.Parent = mainFrame
-
-local profileCorner = Instance.new("UICorner")
-profileCorner.CornerRadius = UDim.new(0, 6)
-profileCorner.Parent = profileFrame
-
--- Imagen de Kaneki
-local ghoulImage = Instance.new("ImageLabel")
-ghoulImage.Size = UDim2.new(0, 32, 0, 32)
-ghoulImage.Position = UDim2.new(0.06, 0, 0.12, 0)
-ghoulImage.BackgroundColor3 = Color3.fromRGB(22, 22, 25)
-ghoulImage.Image = GHOUL_ASSET_ID
-ghoulImage.Parent = profileFrame
-
-local imgCorner = Instance.new("UICorner")
-imgCorner.CornerRadius = UDim.new(1, 0)
-imgCorner.Parent = ghoulImage
-
--- Textos del Header
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(0, 95, 0, 18)
-titleLabel.Position = UDim2.new(0.34, 0, 0.12, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "HERMANOS HUB"
-titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextSize = 10
-titleLabel.TextColor3 = Color3.fromRGB(225, 225, 230)
-titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-titleLabel.Parent = profileFrame
-
-local subLabel = Instance.new("TextLabel")
-subLabel.Size = UDim2.new(0, 95, 0, 12)
-subLabel.Position = UDim2.new(0.34, 0, 0.52, 0)
-subLabel.BackgroundTransparency = 1
-subLabel.Text = "Manual Aim v1"
-subLabel.Font = Enum.Font.Gotham
-subLabel.TextSize = 8
-subLabel.TextColor3 = Color3.fromRGB(130, 130, 135)
-subLabel.TextXAlignment = Enum.TextXAlignment.Left
-subLabel.Parent = profileFrame
-
--- Línea Divisoria Táctica
-local divider = Instance.new("Frame")
-divider.Size = UDim2.new(0, 145, 0, 1)
-divider.Position = UDim2.new(0.06, 0, 0.36, 0)
-divider.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
-divider.BorderSizePixel = 0
-divider.Parent = mainFrame
--- =========================================================
---            BOTONES INTERRUPTORES MANUALES
--- =========================================================
-
--- 1. BOTÓN PVP AIM TOGGLE
-local buttonPVP = Instance.new("TextButton")
-buttonPVP.Size = UDim2.new(0, 145, 0, 30)
-buttonPVP.Position = UDim2.new(0.06, 0, 0.42, 0)
-buttonPVP.BackgroundColor3 = Color3.fromRGB(35, 35, 38) -- Gris Claro Activo
-buttonPVP.Text = "AIM PLAYER: ON"
-buttonPVP.Font = Enum.Font.GothamBold
-buttonPVP.TextSize = 10
-buttonPVP.TextColor3 = Color3.fromRGB(240, 240, 245)
-buttonPVP.Parent = mainFrame
-
-local pvpCorner = Instance.new("UICorner")
-pvpCorner.CornerRadius = UDim.new(0, 5)
-pvpCorner.Parent = buttonPVP
-
--- 2. BOTÓN NPC AIM TOGGLE
-local buttonNPC = Instance.new("TextButton")
-buttonNPC.Size = UDim2.new(0, 145, 0, 30)
-buttonNPC.Position = UDim2.new(0.06, 0, 0.62, 0)
-buttonNPC.BackgroundColor3 = Color3.fromRGB(24, 24, 26) -- Gris Oscuro Apagado
-buttonNPC.Text = "AIM NPC: OFF"
-buttonNPC.Font = Enum.Font.GothamBold
-buttonNPC.TextSize = 10
-buttonNPC.TextColor3 = Color3.fromRGB(135, 135, 140)
-buttonNPC.Parent = mainFrame
-
-local npcCorner = Instance.new("UICorner")
-npcCorner.CornerRadius = UDim.new(0, 5)
-npcCorner.Parent = buttonNPC
-
--- 3. BOTÓN LOCK CAMERA REAL (Sujeción de enfoque manual)
-local buttonCAM = Instance.new("TextButton")
-buttonCAM.Size = UDim2.new(0, 145, 0, 30)
-buttonCAM.Position = UDim2.new(0.06, 0, 0.82, 0)
-buttonCAM.BackgroundColor3 = Color3.fromRGB(24, 24, 26)
-buttonCAM.Text = "LOCK CAMERA: OFF"
-buttonCAM.Font = Enum.Font.GothamBold
-buttonCAM.TextSize = 10
-buttonCAM.TextColor3 = Color3.fromRGB(135, 135, 140)
-buttonCAM.Parent = mainFrame
-
-local camCorner = Instance.new("UICorner")
-camCorner.CornerRadius = UDim.new(0, 5)
-camCorner.Parent = buttonCAM
-
--- ACTUALIZADORES DE ESTADO VISUAL MONOCROMÁTICO
-local function actualizarBotonPVP()
-    buttonPVP.BackgroundColor3 = aimPlayers and Color3.fromRGB(35, 35, 38) or Color3.fromRGB(24, 24, 26)
-    buttonPVP.TextColor3 = aimPlayers and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(135, 135, 140)
-    buttonPVP.Text = aimPlayers and "AIM PLAYER: ON" or "AIM PLAYER: OFF"
-end
-
-local function actualizarBotonNPC()
-    buttonNPC.BackgroundColor3 = aimNPCs and Color3.fromRGB(35, 35, 38) or Color3.fromRGB(24, 24, 26)
-    buttonNPC.TextColor3 = aimNPCs and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(135, 135, 140)
-    buttonNPC.Text = aimNPCs and "AIM NPC: ON" or "AIM NPC: OFF"
-end
-
--- LOCK CAM / AIMBOT MANUAL PROFESIONAL (Guía cuerpo y mira al oponente en tiempo real)
-local function alternarLockCam()
-    camLockActive = not camLockActive
-    if camLockActive then
-        buttonCAM.BackgroundColor3 = Color3.fromRGB(35, 35, 38)
-        buttonCAM.TextColor3 = Color3.fromRGB(255, 255, 255)
-        buttonCAM.Text = "LOCK CAMERA: ON"
-        
-        -- Fijación suave de la cámara al rival
-        camConnection = RunService.RenderStepped:Connect(function()
-            objetivoActual = obtenerObjetivoHermanos()
-            if objetivoActual and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                camera.CFrame = camera.CFrame:Lerp(CFrame.lookAt(camera.CFrame.Position, objetivoActual.Position), 0.22)
+TabGeneral:AddToggle({
+    Name = "Anti Stun",
+    Description = "Enable to activate Anti Stun",
+    Default = false,
+    Callback = function(Value)
+        _G.AntiStun = Value
+        RunService.Stepped:Connect(function()
+            if _G.AntiStun and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+                player.Character:FindFirstChildOfClass("Humanoid").PlatformStand = false
             end
         end)
-        
-        -- AIMBOT PROFESIONAL: Sincroniza la rotación del cuerpo para tus habilidades manuales
-        characterConnection = RunService.Heartbeat:Connect(function()
-            if objetivoActual and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local hrp = player.Character.HumanoidRootPart
-                local vel = objetivoActual.Velocity or Vector3.new(0,0,0)
-                -- Predicción fina para que lances tus ataques a mano y vayan directo al rival
-                local destinoLook = Vector3.new(objetivoActual.Position.X + (vel.X * 0.05), hrp.Position.Y, objetivoActual.Position.Z + (vel.Z * 0.05))
-                hrp.CFrame = hrp.CFrame:Lerp(CFrame.lookAt(hrp.Position, destinoLook), 0.8)
-            end
-        end)
-    else
-        buttonCAM.BackgroundColor3 = Color3.fromRGB(24, 24, 26)
-        buttonCAM.TextColor3 = Color3.fromRGB(135, 135, 140)
-        buttonCAM.Text = "LOCK CAMERA: OFF"
-        if camConnection then camConnection:Disconnect() camConnection = nil end
-        if characterConnection then characterConnection:Disconnect() characterConnection = nil end
     end
-end
+})
 
--- Conexión de Toggles de la interfaz
-buttonPVP.TouchTap:Connect(function() aimPlayers = not aimPlayers; actualizarBotonPVP() end)
-buttonNPC.TouchTap:Connect(function() aimNPCs = not aimNPCs; actualizarBotonNPC() end)
-buttonCAM.TouchTap:Connect(alternarLockCam)
+TabGeneral:AddSlider({
+    Name = "Speed Multiply",
+    Description = "Multiply the speed of the player",
+    Min = 16,
+    Max = 100,
+    Default = 16,
+    Callback = function(Value)
+        walkSpeedValue = Value
+        if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+            player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Value
+        end
+    end
+})
 
--- Efecto visual interactivo de pulsación táctil
-local function agregarEfectoPresionado(boton)
-    boton.TouchTap:Connect(function()
-        local originalColor = boton.BackgroundColor3
-        boton.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-        task.wait(0.06)
-        boton.BackgroundColor3 = originalColor
-    end)
-end
+TabGeneral:AddToggle({
+    Name = "Speed Boost",
+    Description = "Enable to activate Speed Boost",
+    Default = false,
+    Callback = function(Value)
+        _G.SpeedBoost = Value
+        RunService.Heartbeat:Connect(function()
+            if _G.SpeedBoost and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+                player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = walkSpeedValue
+            elseif not _G.SpeedBoost and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+                player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
+            end
+        end)
+    end
+})
 
-agregarEfectoPresionado(buttonPVP)
-agregarEfectoPresionado(buttonNPC)
-agregarEfectoPresionado(buttonCAM)
+-- =========================================================
+--             CONTENIDO PESTAÑA: COMBAT (PVP)
+-- =========================================================
+TabCombat:AddSection({Name = "PVP Manual Aim Assist:"})
+
+TabCombat:AddToggle({
+    Name = "Silent Aim (FOV Directo)",
+    Description = "Redirige tus skills manuales al oponente",
+    Default = false,
+    Callback = function(Value)
+        silentAimActive = Value
+        if silentAimActive then
+            charConnection = RunService.Heartbeat:Connect(function()
+                objetivoActual = obtenerObjetivoPVP()
+                if objetivoActual and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = player.Character.HumanoidRootPart
+                    local vel = objetivoActual.Velocity or Vector3.new(0,0,0)
+                    local lookDestino = Vector3.new(objetivoActual.Position.X + (vel.X * 0.05), hrp.Position.Y, objetivoActual.Position.Z + (vel.Z * 0.05))
+                    hrp.CFrame = hrp.CFrame:Lerp(CFrame.lookAt(hrp.Position, lookDestino), 0.8)
+                end
+            end)
+        else
+            if charConnection then charConnection:Disconnect() charConnection = nil end
+        end
+    end
+})
+
+TabCombat:AddToggle({
+    Name = "Lock Camera (Lerp)",
+    Description = "Fija tu mirada en el oponente de forma fluida",
+    Default = false,
+    Callback = function(Value)
+        lockCamActive = Value
+        if lockCamActive then
+            camConnection = RunService.RenderStepped:Connect(function()
+                local objetivo = obtenerObjetivoPVP()
+                if objetivo then
+                    camera.CFrame = camera.CFrame:Lerp(CFrame.lookAt(camera.CFrame.Position, objetivo.Position), 0.22)
+                end
+            end)
+        else
+            if camConnection then camConnection:Disconnect() camConnection = nil end
+        end
+    end
+})
+
+-- =========================================================
+--      SISTEMA TOGGLE FLOTANTE REAL: FOTO TOKYO GHOUL
+-- =========================================================
+local toggleGui = Instance.new("ScreenGui")
+toggleGui.Name = "GhoulToggle_Gui"
+toggleGui.ResetOnSpawn = false
+toggleGui.Parent = player:WaitForChild("PlayerGui")
+
+local toggleIcon = Instance.new("ImageButton")
+toggleIcon.Size = UDim2.new(0, 45, 0, 45)
+toggleIcon.Position = UDim2.new(0.05, 0, 0.25, 0)
+toggleIcon.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
+toggleIcon.Image = GHOUL_ASSET_ID
+toggleIcon.Active = true
+toggleIcon.Draggable = true
+toggleIcon.Parent = toggleGui
+
+local iconCorner = Instance.new("UICorner")
+iconCorner.CornerRadius = UDim.new(1, 0)
+iconCorner.Parent = toggleIcon
+
+local iconStroke = Instance.new("UIStroke")
+iconStroke.Thickness = 1.8
+iconStroke.Color = Color3.fromRGB(70, 70, 75)
+iconStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+iconStroke.Parent = toggleIcon
+
+-- Conexión física para esconder/mostrar el menú oficial de Redz
+toggleIcon.TouchTap:Connect(function()
+    -- Comando nativo de Redz Library para alternar la visibilidad de su Main Frame
+    if game.CoreGui:FindFirstChild("Hermanos'Dev | PVP") then
+        local mainUI = game.CoreGui["Hermanos'Dev | PVP"]:FindFirstChild("Main") or game.CoreGui["Hermanos'Dev | PVP"]:FindFirstChildOfClass("Frame")
+        if mainUI then
+            mainUI.Visible = not mainUI.Visible
+        end
+    elseif player.PlayerGui:FindFirstChild("Hermanos'Dev | PVP") then
+        local mainUI = player.PlayerGui["Hermanos'Dev | PVP"]:FindFirstChild("Main") or player.PlayerGui["Hermanos'Dev | PVP"]:FindFirstChildOfClass("Frame")
+        if mainUI then
+            mainUI.Visible = not mainUI.Visible
+        end
+    end
+end)
