@@ -3,7 +3,7 @@ local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- ASIGNACIÓN DEL SET PORTAL META
+-- CONFIGURACIÓN DEL SET PORTAL META INSTA-KILL
 local MI_SET = {
     Fruit = "Portal",
     Melee = "Sanguine Art",
@@ -20,7 +20,7 @@ local objetivoActual = nil
 local camera = workspace.CurrentCamera
 local camConnection = nil
 
--- Función forzada para equipar herramientas rápido en móvil
+-- Cambiar de arma de forma forzada instantáneamente sin retrasos
 local function equiparHerramienta(nombreReal)
     local backpack = player:WaitForChild("Backpack")
     local character = player.Character
@@ -37,26 +37,23 @@ local function equiparHerramienta(nombreReal)
     end
 end
 
--- BÚSQUEDA POR FOV (Busca al enemigo más cercano al CENTRO de tu pantalla)
+-- RASTREADOR POR FOV AVANZADO (Fija al oponente más cercano a tu mira de pantalla)
 local function obtenerObjetivoFOV()
     local personajeLocal = player.Character
     if not personajeLocal or not personajeLocal:FindFirstChild("HumanoidRootPart") then return nil end
     
     local mejorObjetivo = nil
     local menorDistanciaPantalla = math.huge
-    local maxRangoStuds = 150 -- Distancia máxima en el juego
+    local maxRangoStuds = 140
 
     local function escanearCuerpo(modelo)
         if modelo and modelo:FindFirstChild("HumanoidRootPart") and modelo:FindFirstChildOfClass("Humanoid") then
             if modelo:FindFirstChildOfClass("Humanoid").Health > 0 and modelo ~= personajeLocal then
                 local hrp = modelo.HumanoidRootPart
-                -- Verifica la distancia en studs primero
                 local distanciaStuds = (personajeLocal.HumanoidRootPart.Position - hrp.Position).Magnitude
                 if distanciaStuds <= maxRangoStuds then
-                    -- Proyecta la posición del mundo 3D a la pantalla móvil 2D
                     local vector, enPantalla = camera:WorldToViewportPoint(hrp.Position)
                     if enPantalla then
-                        -- Calcula qué tan cerca está del centro exacto de tu FOV
                         local centroPantalla = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
                         local distanciaPantalla = (Vector2.new(vector.X, vector.Y) - centroPantalla).Magnitude
                         
@@ -70,22 +67,16 @@ local function obtenerObjetivoFOV()
         end
     end
 
-    -- 1. Filtrar Jugadores si PVP está ON
     if aimPlayers then
         for _, otroPlayer in ipairs(game.Players:GetPlayers()) do
-            if otroPlayer ~= player and otroPlayer.Character then
-                escanearCuerpo(otroPlayer.Character)
-            end
+            if otroPlayer ~= player and otroPlayer.Character then escanearCuerpo(otroPlayer.Character) end
         end
     end
     
-    -- 2. Filtrar NPCs si NPC está ON y no hay un jugador en la mira
     if aimNPCs and not mejorObjetivo then
         for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("Humanoid") and v.Parent then
-                if not game.Players:GetPlayerFromCharacter(v.Parent) then
-                    escanearCuerpo(v.Parent)
-                end
+            if v:IsA("Humanoid") and v.Parent and not game.Players:GetPlayerFromCharacter(v.Parent) then
+                escanearCuerpo(v.Parent)
             end
         end
     end
@@ -95,7 +86,7 @@ end
 
 -- INTERFAZ GRÁFICA (GUI)
 local gui = Instance.new("ScreenGui")
-gui.Name = "L_PortalFOV_Hub"
+gui.Name = "L_PortalMeta_Ultra_Hub"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
@@ -186,7 +177,7 @@ local function actualizarBotonNPC()
     buttonNPC.Text = aimNPCs and "NPC: ON" or "NPC: OFF"
 end
 
--- APARTADO INDEPENDIENTE: LOCK CAM REAL (Fija la vista en el rival frame a frame)
+-- LOCK CAM SEPARADO (Control de cámara nativo frame por frame)
 local function alternarLockCam()
     camLockActive = not camLockActive
     if camLockActive then
@@ -210,86 +201,118 @@ buttonPVP.TouchTap:Connect(function() aimPlayers = not aimPlayers; actualizarBot
 buttonNPC.TouchTap:Connect(function() aimNPCs = not aimNPCs; actualizarBotonNPC() end)
 buttonCAM.TouchTap:Connect(alternarLockCam)
 
-local function pressKey(keyName, holdTime)
-    holdTime = holdTime or 0.05
+-- Disparador Virtual de Inputs Forzado de 1 Frame
+local function ejecutarKeyInstant(keyName)
     local success, VIM = pcall(function() return game:GetService("VirtualInputManager") end)
     if success and VIM then
         local keyCode = Enum.KeyCode[keyName]
         VIM:SendKeyEvent(true, keyCode, false, game)
-        task.wait(holdTime)
+        RunService.Heartbeat:Wait()
         VIM:SendKeyEvent(false, keyCode, false, game)
+    end
+end
+
+-- EL AIMBOT MANO: Aimbot predictivo de Hitbox por FOV (Corregido 'listO')
+local function forzarAimbotHitbox(objetivo)
+    local character = player.Character
+    if character and character:FindFirstChild("HumanoidRootPart") and objetivo then
+        local hrp = character.HumanoidRootPart
+        -- Cálculo Predictivo: Intercepta al rival basándose en su velocidad actual
+        local vel = objetivo.Velocity or Vector3.new(0, 0, 0)
+        local puntoPredicho = objetivo.Position + (vel * 0.09)
+        
+        -- Clava la orientación del cuerpo directo a la hitbox del objetivo
+        hrp.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(puntoPredicho.X, hrp.Position.Y, puntoPredicho.Z))
+        
+        -- Forzar el apuntado de la cámara al objetivo si LOCK está en OFF para que la skill no falle
+        if not camLockActive then
+            camera.CFrame = CFrame.lookAt(camera.CFrame.Position, objetivo.Position)
+        end
+        RunService.Heartbeat:Wait()
+    end
+end
+
+-- SISTEMA ASISTENTE: Escucha si la animación se activa realmente en el personaje
+local function verificarYForzarSkill(keyName)
+    local character = player.Character
+    if not character or not character:FindFirstChildOfClass("Humanoid") then return end
+    
+    local animator = character:FindFirstChildOfClass("Humanoid"):FindFirstChildOfClass("Animator")
+    local skillVerificada = false
+    local intentos = 0
+    
+    -- Intenta lanzar y verificar hasta 8 veces seguidas a súper velocidad (Antilag/Anti-miss)
+    while not skillVerificada and intentos < 8 do
+        ejecutarKeyInstant(keyName)
+        RunService.Heartbeat:Wait()
+        
+        if animator then
+            for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+                local name = track.Animation.Name:lower()
+                -- Si se detecta cualquier movimiento de ataque, se confirma el casteo
+                if name:find("attack") or name:find("slash") or name:find("skill") or name:find("z") or name:find("x") or name:find("c") then
+                    skillVerificada = true
+                    break
+                end
+            end
+        end
+        intentos = intentos + 1
     end
 end
 
 local function waitms(ms) task.wait(ms / 1000) end
 
--- AIMBOT SKILL INTELLIGENT (Alinea los ataques directo al objetivo en tu FOV)
-local function redireccionarAtaque(objetivo)
-    local character = player.Character
-    if character and character:FindFirstChild("HumanoidRootPart") and objetivo then
-        local hrp = character.HumanoidRootPart
-        local velocidad = objetivo.Velocity or Vector3.new(0,0,0)
-        -- Pequeña predicción por si se mueve rápido
-        local posicionObjetivo = objetivo.Position + (velocidad * 0.07)
-        
-        -- Hace que el cuerpo mire directamente a la posición del rival en horizontal y vertical
-        hrp.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(posicionObjetivo.X, hrp.Position.Y, posicionObjetivo.Z))
-        
-        -- Si el LOCK CAM está apagado, de todas formas forzamos la dirección exacta de disparo en ese microsegundo
-        if not camLockActive then
-            camera.CFrame = CFrame.lookAt(camera.CFrame.Position, objetivo.Position)
-        end
-        task.wait(0.02)
-    end
-end
-
--- EJECUCIÓN DEL COMBO COMPETITIVO COMPLETO
+-- SECUENCIA DE COMBO PORTAL INSTA-KILL META CON CONTROL ASISTIDO FORZADO
 local comboEjecutandose = false
 local function Combo()
     if comboEjecutandose then return end
     comboEjecutandose = true
 
-    -- Detecta al enemigo más cercano a tu mira (FOV) en este instante
     objetivoActual = obtenerObjetivoFOV()
+    if not objetivoActual then comboEjecutandose = false return end
 
-    -- 1. Portal Z (Abre el combo con la fruta y teletransporte)
+    -- 1. Portal [Z] (Teletransporta y atrapa. FORZADO SI O SI)
     equiparHerramienta(MI_SET.Fruit)
-    redireccionarAtaque(objetivoActual)
-    waitms(50) pressKey("Z", 0.08) 
-    waitms(850)
+    forzarAimbotHitbox(objetivoActual)
+    waitms(30)
+    verificarYForzarSkill("Z") -- Obliga al script a realizar la Z pase lo que pase
+    waitms(880)
 
-    -- 2. Soul Guitar X (Dispara la guitarra de inmediato para romper Ken-Esquive)
+    -- 2. Soul Guitar [X] (Ruptura instantánea de Ken)
     equiparHerramienta(MI_SET.Gun)
-    redireccionarAtaque(objetivoActual)
-    waitms(50) pressKey("X", 0.08) 
-    waitms(450)
+    forzarAimbotHitbox(objetivoActual)
+    waitms(30)
+    verificarYForzarSkill("X")
+    waitms(420)
 
-    -- 3. Sanguine Art Z (Habilidad de levantamiento continuo)
+    -- 3. Sanguine Art [Z] (Levantamiento y agarre físico)
     equiparHerramienta(MI_SET.Melee)
-    redireccionarAtaque(objetivoActual)
-    waitms(50) pressKey("Z", 0.08) 
-    waitms(300)
+    forzarAimbotHitbox(objetivoActual)
+    waitms(30)
+    verificarYForzarSkill("Z")
+    waitms(320)
 
-    -- 4. Sanguine Art C (Ráfaga de garras roba vida)
-    redireccionarAtaque(objetivoActual)
-    pressKey("C", 0.08) 
-    waitms(800)
+    -- 4. Sanguine Art [C] (Drenaje masivo de vida en el aire)
+    forzarAimbotHitbox(objetivoActual)
+    verificarYForzarSkill("C")
+    waitms(820)
 
-    -- 5. TTK Z (True Triple Katana - Estocada rápida en suspensión)
+    -- 5. TTK [Z] (True Triple Katana - Daño masivo aéreo)
     equiparHerramienta(MI_SET.Sword)
-    redireccionarAtaque(objetivoActual)
-    waitms(50) pressKey("Z", 0.08) 
-    waitms(380)
+    forzarAimbotHitbox(objetivoActual)
+    waitms(30)
+    verificarYForzarSkill("Z")
+    waitms(390)
 
-    -- 6. Sanguine Art X (Golpe final de impacto al suelo)
+    -- 6. Sanguine Art [X] (Remate One-Shot contra el suelo)
     equiparHerramienta(MI_SET.Melee)
-    redireccionarAtaque(objetivoActual)
-    waitms(50) pressKey("X", 0.08)
+    forzarAimbotHitbox(objetivoActual)
+    waitms(30)
+    verificarYForzarSkill("X")
 
     comboEjecutandose = false
 end
 
--- Botón redondo L del Combo
 buttonCombo.TouchTap:Connect(function()
     local normalSize = buttonCombo.Size
     local pressedSize = UDim2.new(0, 47, 0, 47)
