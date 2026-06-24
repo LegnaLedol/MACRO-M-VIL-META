@@ -3,7 +3,7 @@ local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- CONFIGURACIÓN DE SLOTS
+-- CONFIGURACIÓN DE SLOTS FIJOS (1: Sanguíneo | 2: Portal | 3: TTK)
 local SLOTS = { Sanguine = 1, Portal = 2, TTK = 3 }
 
 -- ESTADOS DE LOS MODOS DE APUNTADO
@@ -22,12 +22,13 @@ local function equiparSlot(slotNumber)
     if tools[slotNumber] then tools[slotNumber].Parent = character end
 end
 
--- FUNCIÓN DE BÚSQUEDA AVANZADA (Jugadores o NPCs)
+-- FUNCIÓN DE BÚSQUEDA AVANZADA CON LOCK SEGURO PARA NPCS Y JUGADORES
 local function obtenerObjetivo()
     local personajeLocal = player.Character
     if not personajeLocal or not personajeLocal:FindFirstChild("HumanoidRootPart") then return nil end
     local menorDistancia = math.huge
     local objetivo = nil
+    
     if aimPlayers then
         for _, otroPlayer in ipairs(game.Players:GetPlayers()) do
             if otroPlayer ~= player and otroPlayer.Character and otroPlayer.Character:FindFirstChild("HumanoidRootPart") and otroPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -41,6 +42,7 @@ local function obtenerObjetivo()
             end
         end
     end
+    
     if aimNPCs and not objetivo then
         for _, v in ipairs(workspace:GetDescendants()) do
             if v:IsA("Humanoid") and v.Parent and v.Parent:FindFirstChild("HumanoidRootPart") and v.Parent ~= personajeLocal then
@@ -59,7 +61,7 @@ end
 
 -- CREACIÓN DE LA INTERFAZ GRÁFICA (GUI)
 local gui = Instance.new("ScreenGui")
-gui.Name = "L_Combo_RGB_Hub"
+gui.Name = "L_Combo_TikTok_Hub"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
@@ -180,6 +182,7 @@ local function Combo()
     local objetivo = obtenerObjetivo()
     local camConnection = nil
 
+    -- BLOQUEO CONTINUO (Aplica tanto a Jugadores como a NPCs si están activos)
     if objetivo and camLockActive then
         camera.CameraType = Enum.CameraType.Scriptable
         camConnection = RunService.RenderStepped:Connect(function()
@@ -192,51 +195,41 @@ local function Combo()
         end)
     end
 
+    -- SECUENCIA EXACTA DEL VIDEO DE TIKTOK (1 SHOT PORTAL COMBO)
+    -- 1. Iniciar con Portal (Slot 2) - Habilidad Z (Teletransporte al rival)
     equiparSlot(SLOTS.Portal)
     waitms(80)
     pressKey("Z", 0.1) 
-    waitms(950)
+    waitms(950) -- Espera el impacto y el stun inicial
 
-    if not camConnection then
-        camera.CameraType = Enum.CameraType.Scriptable
-        local x, y, z = camera.CFrame:ToEulerAnglesYXZ()
-        camera.CFrame = CFrame.new(camera.CFrame.Position) * CFrame.fromEulerAnglesYXZ(x + math.rad(-40), y, z)
-        task.wait(0.02)
-        camera.CameraType = Enum.CameraType.Custom
-    end
-    waitms(120)
-
+    -- 2. Cambiar inmediatamente a TTK (Slot 3) - Habilidad X
     equiparSlot(SLOTS.TTK)
     waitms(80)
     pressKey("X", 0.1)
-    waitms(320)
+    waitms(320) -- Delay de ejecución de la espada
 
+    -- 3. Cambiar a Sanguíneo (Slot 1) - Habilidad Z (Levanta y rompe ken)
     equiparSlot(SLOTS.Sanguine)
     waitms(80)
     pressKey("Z", 0.1)
     waitms(350)
 
-    if not camConnection then
-        camera.CameraType = Enum.CameraType.Scriptable
-        local x, y, z = camera.CFrame:ToEulerAnglesYXZ()
-        camera.CFrame = CFrame.new(camera.CFrame.Position) * CFrame.fromEulerAnglesYXZ(x + math.rad(50), y, z)
-        task.wait(0.02)
-        camera.CameraType = Enum.CameraType.Custom
-    end
-    waitms(180)
-
+    -- 4. Lanzar Sanguíneo C (Mientras están suspendidos)
     pressKey("C", 0.1)
-    waitms(900)
+    waitms(900) -- Frame delay de ráfaga
 
+    -- 5. Cambiar rápido a TTK (Slot 3) - Habilidad Z (Remate direccional en el aire)
     equiparSlot(SLOTS.TTK)
     waitms(80)
     pressKey("Z", 0.1)
     waitms(450) 
 
+    -- 6. Finalizar volviendo a Sanguíneo (Slot 1) - Habilidad X
     equiparSlot(SLOTS.Sanguine)
     waitms(80)
     pressKey("X", 0.1)
     
+    -- Liberación y limpieza segura de la cámara
     if camConnection then camConnection:Disconnect(); camConnection = nil end
     camera.CameraType = Enum.CameraType.Custom
     comboEjecutandose = false
