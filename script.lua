@@ -17,7 +17,7 @@ local objetivoActual = nil
 local camera = workspace.CurrentCamera
 local camConnection = nil
 
--- MACRO PC METHOD: Equipado forzado por bypass de memoria
+-- MACRO PC METHOD: Equipado forzado por bypass de memoria (elimina el delay táctil)
 local function equiparHerramientaPC(nombreReal)
     local character = player.Character
     local backpack = player:WaitForChild("Backpack")
@@ -35,8 +35,8 @@ local function equiparHerramientaPC(nombreReal)
     end
 end
 
--- PC AIMBOT METHOD: Escaneo de Hitbox Directo
-local function obtenerObjetivoPC()
+-- PRO AIMBOT METHOD: Filtro de objetivos óptimos en base a distancia real
+local function obtenerObjetivoPro()
     local personajeLocal = player.Character
     if not personajeLocal or not personajeLocal:FindFirstChild("HumanoidRootPart") then return nil end
     local menorDistancia = math.huge
@@ -72,144 +72,155 @@ local function obtenerObjetivoPC()
 end
 
 -- =========================================================
---              NUEVA INTERFAZ GRÁFICA ESTÉTICA (IU)
+--        NUEVA IU PREMIUM: BOTONES SEPARADOS Y MÓVILES
 -- =========================================================
 local gui = Instance.new("ScreenGui")
-gui.Name = "L_CyberMeta_Menu"
+gui.Name = "L_Pro_Separated_Hub"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- Contenedor Principal (Panel Completo)
-local mainPanel = Instance.new("Frame")
-mainPanel.Size = UDim2.new(0, 100, 0, 195)
-mainPanel.Position = UDim2.new(0.82, 0, 0.35, 0)
-mainPanel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-mainPanel.BackgroundTransparency = 0.15
-mainPanel.Active = true
-mainPanel.Draggable = true -- Arrastra desde el fondo para mover todo el menú junto
-mainPanel.Parent = gui
-
-local panelCorner = Instance.new("UICorner")
-panelCorner.CornerRadius = UDim.new(0, 10)
-panelCorner.Parent = mainPanel
-
--- Borde con Efecto Neón Arcoíris RGB para todo el panel
-local panelStroke = Instance.new("UIStroke")
-panelStroke.Thickness = 1.5
-panelStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-panelStroke.Parent = mainPanel
-
--- 1. BOTÓN PRINCIPAL DEL COMBO "L" (Estilo Neon Central)
+-- 1. BOTÓN PRINCIPAL DEL COMBO "LAUNCH" (Diseño Ejecutivo Oscuro)
 local buttonCombo = Instance.new("TextButton")
-buttonCombo.Size = UDim2.new(0, 80, 0, 40)
-buttonCombo.Position = UDim2.new(0.1, 0, 0.08, 0)
-buttonCombo.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
+buttonCombo.Size = UDim2.new(0, 75, 0, 42)
+buttonCombo.Position = UDim2.new(0.75, 0, 0.45, 0)
+buttonCombo.BackgroundColor3 = Color3.fromRGB(24, 18, 36)
+buttonCombo.BackgroundTransparency = 0.15
 buttonCombo.Text = "LAUNCH"
 buttonCombo.Font = Enum.Font.GothamBold
-buttonCombo.TextSize = 12
-buttonCombo.TextColor3 = Color3.fromRGB(255, 255, 255)
-buttonCombo.Parent = mainPanel
+buttonCombo.TextSize = 11
+buttonCombo.TextColor3 = Color3.fromRGB(235, 235, 255)
+buttonCombo.Active = true
+buttonCombo.Draggable = true
+buttonCombo.Parent = gui
 
 local cornerCombo = Instance.new("UICorner")
-cornerCombo.CornerRadius = UDim.new(0, 6)
+cornerCombo.CornerRadius = UDim.new(0, 8)
 cornerCombo.Parent = buttonCombo
 
--- Separador Visual Elegante
-local divider = Instance.new("Frame")
-divider.Size = UDim2.new(0, 80, 0, 1)
-divider.Position = UDim2.new(0.1, 0, 0.33, 0)
-divider.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
-divider.BorderSizePixel = 0
-divider.Parent = mainPanel
+local strokeCombo = Instance.new("UIStroke")
+strokeCombo.Thickness = 1.5
+strokeCombo.Color = Color3.fromRGB(115, 60, 195) -- Contorno morado neón fijo elegante
+strokeCombo.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+strokeCombo.Parent = buttonCombo
 
--- 2. INTERRUPTOR ESTÉTICO: JUGADORES (PVP)
+-- 2. BOTÓN INTERRUPTOR: PVP
 local buttonPVP = Instance.new("TextButton")
-buttonPVP.Size = UDim2.new(0, 80, 0, 28)
-buttonPVP.Position = UDim2.new(0.1, 0, 0.38, 0)
-buttonPVP.BackgroundColor3 = Color3.fromRGB(25, 60, 35)
+buttonPVP.Size = UDim2.new(0, 65, 0, 30)
+buttonPVP.Position = UDim2.new(0.75, 85, 0, 48)
+buttonPVP.BackgroundColor3 = Color3.fromRGB(15, 30, 20)
+buttonPVP.BackgroundTransparency = 0.2
 buttonPVP.Text = "PVP: ON"
 buttonPVP.Font = Enum.Font.GothamBold
-buttonPVP.TextSize = 11
+buttonPVP.TextSize = 10
 buttonPVP.TextColor3 = Color3.fromRGB(255, 255, 255)
-buttonPVP.Parent = mainPanel
+buttonPVP.Active = true
+buttonPVP.Draggable = true
+buttonPVP.Parent = gui
 
 local cornerPVP = Instance.new("UICorner")
 cornerPVP.CornerRadius = UDim.new(0, 6)
 cornerPVP.Parent = buttonPVP
 
--- 3. INTERRUPTOR ESTÉTICO: NPCs (FARM)
+local strokePVP = Instance.new("UIStroke")
+strokePVP.Thickness = 1.2
+strokePVP.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+strokePVP.Parent = buttonPVP
+
+-- 3. BOTÓN INTERRUPTOR: NPC
 local buttonNPC = Instance.new("TextButton")
-buttonNPC.Size = UDim2.new(0, 80, 0, 28)
-buttonNPC.Position = UDim2.new(0.1, 0, 0.56, 0)
-buttonNPC.BackgroundColor3 = Color3.fromRGB(70, 30, 30)
+buttonNPC.Size = UDim2.new(0, 65, 0, 30)
+buttonNPC.Position = UDim2.new(0.75, 85, 0, 85)
+buttonNPC.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
+buttonNPC.BackgroundTransparency = 0.2
 buttonNPC.Text = "NPC: OFF"
 buttonNPC.Font = Enum.Font.GothamBold
-buttonNPC.TextSize = 11
+buttonNPC.TextSize = 10
 buttonNPC.TextColor3 = Color3.fromRGB(255, 255, 255)
-buttonNPC.Parent = mainPanel
+buttonNPC.Active = true
+buttonNPC.Draggable = true
+buttonNPC.Parent = gui
 
 local cornerNPC = Instance.new("UICorner")
 cornerNPC.CornerRadius = UDim.new(0, 6)
 cornerNPC.Parent = buttonNPC
 
--- 4. INTERRUPTOR ESTÉTICO: LOCK CÁMARA
+local strokeNPC = Instance.new("UIStroke")
+strokeNPC.Thickness = 1.2
+strokeNPC.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+strokeNPC.Parent = buttonNPC
+
+-- 4. BOTÓN INTERRUPTOR: LOCK CAM
 local buttonCAM = Instance.new("TextButton")
-buttonCAM.Size = UDim2.new(0, 80, 0, 28)
-buttonCAM.Position = UDim2.new(0.1, 0, 0.74, 0)
-buttonCAM.BackgroundColor3 = Color3.fromRGB(70, 30, 30)
+buttonCAM.Size = UDim2.new(0, 65, 0, 30)
+buttonCAM.Position = UDim2.new(0.75, 85, 0, 122)
+buttonCAM.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
+buttonCAM.BackgroundTransparency = 0.2
 buttonCAM.Text = "LOCK: OFF"
 buttonCAM.Font = Enum.Font.GothamBold
-buttonCAM.TextSize = 11
+buttonCAM.TextSize = 10
 buttonCAM.TextColor3 = Color3.fromRGB(255, 255, 255)
-buttonCAM.Parent = mainPanel
+buttonCAM.Active = true
+buttonCAM.Draggable = true
+buttonCAM.Parent = gui
 
 local cornerCAM = Instance.new("UICorner")
 cornerCAM.CornerRadius = UDim.new(0, 6)
 cornerCAM.Parent = buttonCAM
 
--- Hilo cíclico para iluminar el neón del contorno con degradado cromático
+local strokeCAM = Instance.new("UIStroke")
+strokeCAM.Thickness = 1.2
+strokeCAM.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+strokeCAM.Parent = buttonCAM
+
+-- Bucle Coroutine único para animar el degradado RGB en los contornos de los botones interactivos
 coroutine.wrap(function()
     while true do
         for hue = 0, 1, 0.01 do
-            panelStroke.Color = Color3.fromHSV(hue, 0.8, 0.9)
+            local color = Color3.fromHSV(hue, 0.75, 0.85)
+            strokePVP.Color = color
+            strokeNPC.Color = color
+            strokeCAM.Color = color
             task.wait(0.02)
         end
     end
 end)()
--- Actualización visual adaptativa de la nueva IU
 local function actualizarBotonPVP()
     if aimPlayers then
-        buttonPVP.BackgroundColor3 = Color3.fromRGB(25, 60, 35) -- Verde bosque sutil
+        buttonPVP.BackgroundColor3 = Color3.fromRGB(15, 30, 20)
         buttonPVP.Text = "PVP: ON"
     else
-        buttonPVP.BackgroundColor3 = Color3.fromRGB(70, 30, 30) -- Carmesí oscuro
+        buttonPVP.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
         buttonPVP.Text = "PVP: OFF"
     end
 end
 
 local function actualizarBotonNPC()
     if aimNPCs then
-        buttonNPC.BackgroundColor3 = Color3.fromRGB(25, 60, 35)
+        buttonNPC.BackgroundColor3 = Color3.fromRGB(15, 30, 20)
         buttonNPC.Text = "NPC: ON"
     else
-        buttonNPC.BackgroundColor3 = Color3.fromRGB(70, 30, 30)
+        buttonNPC.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
         buttonNPC.Text = "NPC: OFF"
     end
 end
 
+-- APARTADO INDEPENDIENTE: LOCK CAM SMOOTH (CFrame Suavizado profesional)
 local function alternarLockCam()
     camLockActive = not camLockActive
     if camLockActive then
-        buttonCAM.BackgroundColor3 = Color3.fromRGB(25, 60, 35)
+        buttonCAM.BackgroundColor3 = Color3.fromRGB(15, 30, 20)
         buttonCAM.Text = "LOCK: ON"
         camConnection = RunService.RenderStepped:Connect(function()
-            objetivoActual = obtenerObjetivoPC()
+            objetivoActual = obtenerObjetivoPro()
             if objetivoActual and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                camera.CFrame = CFrame.lookAt(camera.CFrame.Position, objetivoActual.Position)
+                -- Interpolación Lineal (Lerp) a velocidad de refresco del dispositivo móvil
+                local actualCFrame = camera.CFrame
+                local destinoCFrame = CFrame.lookAt(camera.CFrame.Position, objetivoActual.Position)
+                camera.CFrame = actualCFrame:Lerp(destinoCFrame, 0.25) -- 0.25 da un seguimiento ultra fluido y profesional
             end
         end)
     else
-        buttonCAM.BackgroundColor3 = Color3.fromRGB(70, 30, 30)
+        buttonCAM.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
         buttonCAM.Text = "LOCK: OFF"
         if camConnection then camConnection:Disconnect() camConnection = nil end
     end
@@ -229,15 +240,20 @@ local function ejecutarKeyInstant(keyName)
     end
 end
 
--- PC AIMBOT METHOD: Ajuste de rotación total
-local function alinearVectoresPC(objetivo)
+-- PRO AIMBOT SKILL SYSTEM: Interpolación de movimiento de vectores + Compensación de Ping
+local function alinearVectoresPro(objetivo)
     local character = player.Character
     if character and character:FindFirstChild("HumanoidRootPart") and objetivo then
         local hrp = character.HumanoidRootPart
-        local vel = objetivo.Velocity or Vector3.new(0, 0, 0)
-        local posicionObjetivo = objetivo.Position + (vel * 0.06)
         
-        hrp.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(posicionObjetivo.X, hrp.Position.Y, posicionObjetivo.Z))
+        -- Compensación predictiva avanzada basándose en los frames de red
+        local vel = objetivo.Velocity or Vector3.new(0, 0, 0)
+        local pingCompensation = vel * 0.055
+        local posicionPredicha = objetivo.Position + pingCompensation
+        
+        -- Forzar la rotación del cuerpo mirando a la hitbox con suavizado Lerp instantáneo
+        local targetRotation = CFrame.lookAt(hrp.Position, Vector3.new(posicionPredicha.X, hrp.Position.Y, posicionPredicha.Z))
+        hrp.CFrame = hrp.CFrame:Lerp(targetRotation, 0.8) -- Transición limpia en 1 tick físico
         
         if not camLockActive then
             camera.CFrame = CFrame.lookAt(camera.CFrame.Position, objetivo.Position)
@@ -246,7 +262,7 @@ local function alinearVectoresPC(objetivo)
     end
 end
 
--- CANCELACIÓN DE ANIMACIONES
+-- CANCELACIÓN DE ANIMACIONES POR MARCADORES DE RED DE EXPLOITS PROFESIONALES
 local function esperarTickAnimacion(keyName)
     local character = player.Character
     if not character or not character:FindFirstChildOfClass("Humanoid") then return end
@@ -273,63 +289,56 @@ local function esperarTickAnimacion(keyName)
     end
 end
 
--- EJECUCIÓN DEL COMBO COMPLEMENTARIO PORTAL META
+-- EJECUCIÓN DE LA MACRO META PORTAL ONE-SHOT DEFINITIVA (MÁXIMA EFICIENCIA)
 local comboEjecutandose = false
 local function Combo()
     if comboEjecutandose then return end
     comboEjecutandose = true
 
-    objetivoActual = obtenerObjetivoPC()
+    objetivoActual = obtenerObjetivoPro()
     if not objetivoActual then comboEjecutandose = false return end
 
     -- 1. Portal [Z]
     equiparHerramientaPC(MI_SET.Fruit)
-    alinearVectoresPC(objetivoActual)
+    alinearVectoresPro(objetivoActual)
     esperarTickAnimacion("Z")
     RunService.Heartbeat:Wait() task.wait(0.85)
 
     -- 2. Soul Guitar [X]
     equiparHerramientaPC(MI_SET.Gun)
-    alinearVectoresPC(objetivoActual)
+    alinearVectoresPro(objetivoActual)
     esperarTickAnimacion("X")
     task.wait(0.4)
 
     -- 3. Sanguine Art [Z]
     equiparHerramientaPC(MI_SET.Melee)
-    alinearVectoresPC(objetivoActual)
+    alinearVectoresPro(objetivoActual)
     esperarTickAnimacion("Z")
     task.wait(0.3)
 
     -- 4. Sanguine Art [C]
-    alinearVectoresPC(objetivoActual)
+    alinearVectoresPro(objetivoActual)
     esperarTickAnimacion("C")
     task.wait(0.8)
 
     -- 5. TTK [Z]
     equiparHerramientaPC(MI_SET.Sword)
-    alinearVectoresPC(objetivoActual)
+    alinearVectoresPro(objetivoActual)
     esperarTickAnimacion("Z")
     task.wait(0.35)
 
     -- 6. Sanguine Art [X]
     equiparHerramientaPC(MI_SET.Melee)
-    alinearVectoresPC(objetivoActual)
+    alinearVectoresPro(objetivoActual)
     esperarTickAnimacion("X")
 
     comboEjecutandose = false
 end
 
--- Animación premium interactiva en el botón "LAUNCH" al pulsarlo
+-- Animación premium de escala interactiva al pulsar el botón "LAUNCH"
 buttonCombo.TouchTap:Connect(function()
-    local oldColor = buttonCombo.BackgroundColor3
-    local tweenShrink = TweenService:Create(buttonCombo, TweenInfo.new(0.06), {
-        Size = UDim2.new(0, 74, 0, 36),
-        BackgroundColor3 = Color3.fromRGB(60, 30, 100)
-    })
-    local tweenExpand = TweenService:Create(buttonCombo, TweenInfo.new(0.06), {
-        Size = UDim2.new(0, 80, 0, 40),
-        BackgroundColor3 = oldColor
-    })
+    local tweenShrink = TweenService:Create(buttonCombo, TweenInfo.new(0.06), {Size = UDim2.new(0, 69, 0, 38)})
+    local tweenExpand = TweenService:Create(buttonCombo, TweenInfo.new(0.06), {Size = UDim2.new(0, 75, 0, 42)})
     
     tweenShrink:Play()
     tweenShrink.Completed:Wait()
