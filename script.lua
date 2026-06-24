@@ -1,30 +1,73 @@
 local player = game.Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
--- CONFIGURACIÓN DE FIJACIÓN INVISIBLE POR DISTANCIA REAL (PVP)
-local objetivoActual = nil
+-- CONFIGURACIÓN ULTRA-DESCARADA INVISIBLE (SÓLO PVP JUGADORES)
+local rangoMaximoStuds = 150
 local camera = workspace.CurrentCamera
-local RANGO_MAX_STUDS = 160 -- Distancia máxima en bloques en el mapa
+local objetivoActual = nil
 
--- ALGORITMO COMPETITIVO: Busca estrictamente al jugador más cercano en studs
+-- =========================================================
+--      NOTIFICACIÓN DE PRUEBA: ALERTA LEGNA (5 SEGUNDOS)
+-- =========================================================
+local function mostrarAlertaLegna()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "LegnaAlert_Gui"
+    gui.ResetOnSpawn = false
+    gui.Parent = player:WaitForChild("PlayerGui")
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0, 240, 0, 35)
+    label.Position = UDim2.new(0.5, -120, 0, -50) -- Inicia fuera de la pantalla arriba
+    label.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
+    label.BackgroundTransparency = 0.1
+    label.Text = "Legna Hub Loaded Successfully!"
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 11
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Parent = gui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = label
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 1.5
+    stroke.Color = Color3.fromRGB(60, 60, 65)
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = label
+
+    -- Animación de entrada (Baja suavemente)
+    label:TweenPosition(UDim2.new(0.5, -120, 0, 20), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.5, true)
+    
+    -- Espera los 5 segundos de visualización solicitados
+    task.wait(5)
+    
+    -- Animación de salida (Sube y se borra)
+    label:TweenPosition(UDim2.new(0.5, -120, 0, -50), Enum.EasingDirection.In, Enum.EasingStyle.Quart, 0.5, true, function()
+        gui:Destroy()
+    end)
+end
+
+-- Ejecuta la alerta de forma asíncrona en un hilo separado para no trabar el juego
+coroutine.wrap(mostrarAlertaLegna)()
+
+-- ALGORITMO EXCLUSIVO: Busca estrictamente al jugador más cercano en el mapa
 local function obtenerJugadorMasCercano()
     local personajeLocal = player.Character
     if not personajeLocal or not personajeLocal:FindFirstChild("HumanoidRootPart") then return nil end
     
     local mejorObjetivo = nil
-    local menorDistanciaStuds = math.huge
+    local menorDistancia = math.huge
 
-    -- Escanea a todos los jugadores del servidor
     for _, otroPlayer in ipairs(game.Players:GetPlayers()) do
         if otroPlayer ~= player and otroPlayer.Character and otroPlayer.Character:FindFirstChild("HumanoidRootPart") and otroPlayer.Character:FindFirstChildOfClass("Humanoid") then
             if otroPlayer.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
                 local hrp = otroPlayer.Character.HumanoidRootPart
-                -- Calcula la distancia física real en el mapa 3D (No usa FOV de pantalla)
-                local distanciaStuds = (personajeLocal.HumanoidRootPart.Position - hrp.Position).Magnitude
+                local distancia = (personajeLocal.HumanoidRootPart.Position - hrp.Position).Magnitude
                 
-                -- Filtra y elige al que esté más pegado a ti
-                if distanciaStuds <= RANGO_MAX_STUDS and distanciaStuds < menorDistanciaStuds then
-                    menorDistanciaStuds = distanciaStuds
+                if distancia <= rangoMaximoStuds and distancia < menorDistancia then
+                    menorDistancia = distancia
                     mejorObjetivo = hrp
                 end
             end
@@ -32,47 +75,37 @@ local function obtenerJugadorMasCercano()
     end
     return mejorObjetivo
 end
--- =========================================================
---    MONITOR DE ENCLAVAMIENTO AL OBJETIVO MÁS CERCANO
--- =========================================================
 
+-- =========================================================
+--    MONITOR DE ENCLAVAMIENTO RAGE UNIDO AL CANDADO VERDE
+-- =========================================================
 RunService.RenderStepped:Connect(function()
-    -- Detecta el estado del botón de bloqueo (Shift Lock nativo) de Roblox móvil
+    -- Detecta de forma nativa el estado del Shift Lock de Roblox móvil
     local success, mouselock = pcall(function()
         return player.PlayerScripts.PlayerModule.CameraModule.MouseLockController:GetIsMouseLocked()
     end)
 
-    -- Si el candado del juego está activo (El "ajá")
+    -- Si el bloqueo de cámara original de Blox Fruits está activo (El candado verde / El "ajá")
     if (success and mouselock) or camera.CameraMode == Enum.CameraMode.LockFirstPerson then
-        -- Busca al oponente más cercano físicamente en ese frame
-        local objetivo = obtenerJugadorMasCercano()
+        objetivoActual = obtenerJugadorMasCercano()
         
-        if Corporate and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        if objetivoActual and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             local hrp = player.Character.HumanoidRootPart
-            local vel = objetivo.Velocity or Vector3.new(0, 0, 0)
+            local vel = objetivoActual.Velocity or Vector3.new(0,0,0)
             
-            -- CÁLCULO DE ÁNGULO: Revisa si el oponente más cercano se teletransportó a tu espalda
-            local direccionAlObjetivo = (objetivo.Position - hrp.Position).Unit
-            local direccionMiradaActual = hrp.LookVector
-            local productoPunto = direccionMiradaActual:Dot(direccionAlObjetivo)
+            -- Compensación de Ping: Predice la posición del rival para contrarrestar dashes
+            local posicionPredicha = objetivoActual.Position + (vel * 0.05)
             
-            -- Posición destino con compensación física para contrarrestar dashes rápidos
-            local destinoLook = Vector3.new(objetivo.Position.X + (vel.X * 0.04), hrp.Position.Y, objetivo.Position.Z + (vel.Z * 0.04))
-            local cframeDestino = CFrame.lookAt(hrp.Position, destinoLook)
+            -- [LOCK CAM DESCARADO] Clava tu mirada frame a frame al oponente sin soltarlo
+            camera.CFrame = CFrame.lookAt(camera.CFrame.Position, objetivoActual.Position)
             
-            if productoPunto < -0.2 then
-                -- [BYPASS HUMANIZADO] Si se teletransporta atrás, gira con fluidez (0.45) para evitar alertas del juego
-                hrp.CFrame = hrp.CFrame:Lerp(cframeDestino, 0.45)
-            else
-                -- [MODO DESCARADO] Si está frente a ti, se ancla al 100% frame a frame sin soltarlo ni un milímetro
-                hrp.CFrame = cframeDestino
-            end
+            -- [AIMBOT CORPORAL] Gira tu cuerpo hacia el oponente al mismo tiempo
+            hrp.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(posicionPredicha.X, hrp.Position.Y, posicionPredicha.Z))
         end
     else
-        -- Si el candado del juego se desactiva (Botón Blanco), se limpia el rastreo por completo
+        -- Cuando el botón original se vuelve blanco, limpia el objetivo y te da control libre normal
         objetivoActual = nil
     end
 end)
 
-print("[GHOUL SYSTEM] Enclavamiento al JUGADOR MÁS CERCANO acoplado al Camera Lock.")
-print("[GHOUL SYSTEM] Candado Activo = Anclaje descarado al más cercano. Candado Blanco = Apagado.")
+print("[BLOX FRUITS] Legna Hub inicializado con exito.")
