@@ -3,38 +3,46 @@ local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- CONFIGURACIÓN DE SLOTS FIJOS (1: Sanguíneo | 2: Portal | 3: TTK)
+-- CONFIGURACIÓN ESTRICTA DE TUS SLOTS (1: Sanguíneo | 2: Portal | 3: TTK)
 local SLOTS = { Sanguine = 1, Portal = 2, TTK = 3 }
 
--- ESTADOS DE LOS MODOS DE APUNTADO
+-- ESTADOS DEL MENÚ
 local aimPlayers = true
 local aimNPCs = false
-local camLockActive = true
+local skillAimActive = true -- Silent Aim Inteligente
 
--- Función para equipar herramientas de manera forzada en móvil
+local objetivoActual = nil
+local camera = workspace.CurrentCamera
+
+-- Función para equipar herramientas de manera forzada y rápida en móvil
 local function equiparSlot(slotNumber)
     local backpack = player:WaitForChild("Backpack")
     local character = player.Character
     if not character then return end
+    
     local currentTool = character:FindFirstChildOfClass("Tool")
     if currentTool then currentTool.Parent = backpack end
+    
     local tools = backpack:GetChildren()
-    if tools[slotNumber] then tools[slotNumber].Parent = character end
+    if tools[slotNumber] then 
+        tools[slotNumber].Parent = character 
+    end
 end
 
--- FUNCIÓN DE BÚSQUEDA AVANZADA CON LOCK SEGURO PARA NPCS Y JUGADORES
+-- FUNCIÓN DE BÚSQUEDA ADAPTATIVA: Detecta según el modo encendido
 local function obtenerObjetivo()
     local personajeLocal = player.Character
     if not personajeLocal or not personajeLocal:FindFirstChild("HumanoidRootPart") then return nil end
     local menorDistancia = math.huge
     local objetivo = nil
     
+    -- Si PVP está ON, busca jugadores primero
     if aimPlayers then
         for _, otroPlayer in ipairs(game.Players:GetPlayers()) do
             if otroPlayer ~= player and otroPlayer.Character and otroPlayer.Character:FindFirstChild("HumanoidRootPart") and otroPlayer.Character:FindFirstChildOfClass("Humanoid") then
                 if otroPlayer.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
                     local distancia = (personajeLocal.HumanoidRootPart.Position - otroPlayer.Character.HumanoidRootPart.Position).Magnitude
-                    if distancia < menorDistancia and distancia < 150 then
+                    if distancia < menorDistancia and distancia < 130 then
                         menorDistancia = distancia
                         objetivo = otroPlayer.Character.HumanoidRootPart
                     end
@@ -43,12 +51,13 @@ local function obtenerObjetivo()
         end
     end
     
+    -- Si NPC está ON (y no encontró jugador prioritario), busca el NPC más cercano
     if aimNPCs and not objetivo then
         for _, v in ipairs(workspace:GetDescendants()) do
             if v:IsA("Humanoid") and v.Parent and v.Parent:FindFirstChild("HumanoidRootPart") and v.Parent ~= personajeLocal then
                 if not game.Players:GetPlayerFromCharacter(v.Parent) and v.Health > 0 then
                     local distancia = (personajeLocal.HumanoidRootPart.Position - v.Parent.HumanoidRootPart.Position).Magnitude
-                    if distancia < menorDistancia and distancia < 150 then
+                    if distancia < menorDistancia and distancia < 130 then
                         menorDistancia = distancia
                         objetivo = v.Parent.HumanoidRootPart
                     end
@@ -61,7 +70,7 @@ end
 
 -- CREACIÓN DE LA INTERFAZ GRÁFICA (GUI)
 local gui = Instance.new("ScreenGui")
-gui.Name = "L_Combo_TikTok_Hub"
+gui.Name = "L_Combo_SilentAim_Hub"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
@@ -113,26 +122,26 @@ local cornerNPC = Instance.new("UICorner")
 cornerNPC.CornerRadius = UDim.new(0, 6)
 cornerNPC.Parent = buttonNPC
 
-local buttonCAM = Instance.new("TextButton")
-buttonCAM.Size = UDim2.new(0, 65, 0, 28)
-buttonCAM.Position = UDim2.new(0.75, 65, 0, 116)
-buttonCAM.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
-buttonCAM.Text = "CAM: ON"
-buttonCAM.TextSize = 11
-buttonCAM.Font = Enum.Font.GothamBold
-buttonCAM.TextColor3 = Color3.fromRGB(255, 255, 255)
-buttonCAM.Active = true
-buttonCAM.Draggable = true
-buttonCAM.Parent = gui
+local buttonAIM = Instance.new("TextButton")
+buttonAIM.Size = UDim2.new(0, 65, 0, 28)
+buttonAIM.Position = UDim2.new(0.75, 65, 0, 116)
+buttonAIM.BackgroundColor3 = Color3.fromRGB(34, 139, 34)
+buttonAIM.Text = "SAIM: ON"
+buttonAIM.TextSize = 11
+buttonAIM.Font = Enum.Font.GothamBold
+buttonAIM.TextColor3 = Color3.fromRGB(255, 255, 255)
+buttonAIM.Active = true
+buttonAIM.Draggable = true
+buttonAIM.Parent = gui
 
-local cornerCAM = Instance.new("UICorner")
-cornerCAM.CornerRadius = UDim.new(0, 6)
-cornerCAM.Parent = buttonCAM
+local cornerAIM = Instance.new("UICorner")
+cornerAIM.CornerRadius = UDim.new(0, 6)
+cornerAIM.Parent = buttonAIM
 
 local rgbStroke = Instance.new("UIStroke")
 rgbStroke.Thickness = 2
 rgbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-rgbStroke.Parent = buttonCAM
+rgbStroke.Parent = buttonAIM
 
 coroutine.wrap(function()
     while true do
@@ -152,15 +161,16 @@ local function actualizarBotonNPC()
     buttonNPC.Text = aimNPCs and "NPC: ON" or "NPC: OFF"
 end
 
-local function actualizarBotonCAM()
-    buttonCAM.BackgroundColor3 = camLockActive and Color3.fromRGB(34, 139, 34) or Color3.fromRGB(178, 34, 34)
-    buttonCAM.Text = camLockActive and "CAM: ON" or "CAM: OFF"
+local function actualizarBotonAIM()
+    buttonAIM.BackgroundColor3 = skillAimActive and Color3.fromRGB(34, 139, 34) or Color3.fromRGB(178, 34, 34)
+    buttonAIM.Text = skillAimActive and "SAIM: ON" or "SAIM: OFF"
 end
 
 buttonPVP.TouchTap:Connect(function() aimPlayers = not aimPlayers; actualizarBotonPVP() end)
 buttonNPC.TouchTap:Connect(function() aimNPCs = not aimNPCs; actualizarBotonNPC() end)
-buttonCAM.TouchTap:Connect(function() camLockActive = not camLockActive; actualizarBotonCAM() end)
+buttonAIM.TouchTap:Connect(function() skillAimActive = not skillAimActive; actualizarBotonAIM() end)
 
+-- Simulador virtual de pulsaciones
 local function pressKey(keyName, holdTime)
     holdTime = holdTime or 0.05
     local success, VIM = pcall(function() return game:GetService("VirtualInputManager") end)
@@ -172,69 +182,88 @@ local function pressKey(keyName, holdTime)
     end
 end
 
-local camera = workspace.CurrentCamera
 local function waitms(ms) task.wait(ms / 1000) end
 
+-- Redirección Silent Aim en milisegundos para conectar Skills perfectamente
+local function dirigirAtaque(objetivo)
+    if objetivo and skillAimActive then
+        camera.CFrame = CFrame.new(camera.CFrame.Position, objetivo.Position)
+        task.wait(0.02) -- Breve retraso interno para registrar la dirección del ataque
+    end
+end
+
+-- TU COMBO ORIGINAL (Portal Z -> TTK X -> Sanguine Z -> Sanguine C -> TTK Z -> Sanguine X)
 local comboEjecutandose = false
 local function Combo()
     if comboEjecutandose then return end
     comboEjecutandose = true
-    local objetivo = obtenerObjetivo()
-    local camConnection = nil
 
-    -- BLOQUEO CONTINUO (Aplica tanto a Jugadores como a NPCs si están activos)
-    if objetivo and camLockActive then
-        camera.CameraType = Enum.CameraType.Scriptable
-        camConnection = RunService.RenderStepped:Connect(function()
-            if objetivo and objetivo.Parent and objetivo.Parent:FindFirstChild("Humanoid") and objetivo.Parent.Humanoid.Health > 0 then
-                camera.CFrame = CFrame.new(camera.CFrame.Position, objetivo.Position)
-            else
-                if camConnection then camConnection:Disconnect(); camConnection = nil end
-                camera.CameraType = Enum.CameraType.Custom
-            end
-        end)
-    end
+    -- Detecta dinámicamente si el Silent Aim va a NPC o a Jugador según tus botones
+    objetivoActual = obtenerObjetivo()
 
-    -- SECUENCIA EXACTA DEL VIDEO DE TIKTOK (1 SHOT PORTAL COMBO)
-    -- 1. Iniciar con Portal (Slot 2) - Habilidad Z (Teletransporte al rival)
+    -- 1. Equipa Portal (Slot 2) y usa Z
     equiparSlot(SLOTS.Portal)
-    waitms(80)
-    pressKey("Z", 0.1) 
-    waitms(950) -- Espera el impacto y el stun inicial
+    dirigirAtaque(objetivoActual)
+    waitms(50)
+    pressKey("Z", 0.08) 
+    waitms(900)
 
-    -- 2. Cambiar inmediatamente a TTK (Slot 3) - Habilidad X
+    -- Ángulo hacia abajo por defecto si no hay objetivo cerca
+    if not objetivoActual then
+        camera.CameraType = Enum.CameraType.Scriptable
+        local x, y, z = camera.CFrame:ToEulerAnglesYXZ()
+        camera.CFrame = CFrame.new(camera.CFrame.Position) * CFrame.fromEulerAnglesYXZ(x + math.rad(-40), y, z)
+        task.wait(0.02)
+        camera.CameraType = Enum.CameraType.Custom
+    end
+    waitms(150)
+
+    -- 2. Equipa TTK (Slot 3) y usa X
     equiparSlot(SLOTS.TTK)
-    waitms(80)
-    pressKey("X", 0.1)
-    waitms(320) -- Delay de ejecución de la espada
+    dirigirAtaque(objetivoActual)
+    waitms(50)
+    pressKey("X", 0.08)
+    waitms(250)
 
-    -- 3. Cambiar a Sanguíneo (Slot 1) - Habilidad Z (Levanta y rompe ken)
+    -- 3. Equipa Sanguíneo (Slot 1) y usa Z (Levanta al enemigo)
     equiparSlot(SLOTS.Sanguine)
-    waitms(80)
-    pressKey("Z", 0.1)
-    waitms(350)
+    dirigirAtaque(objetivoActual)
+    waitms(50)
+    pressKey("Z", 0.08)
+    waitms(300)
 
-    -- 4. Lanzar Sanguíneo C (Mientras están suspendidos)
-    pressKey("C", 0.1)
-    waitms(900) -- Frame delay de ráfaga
+    -- Ángulo hacia arriba por defecto si no hay objetivo cerca
+    if not objetivoActual then
+        camera.CameraType = Enum.CameraType.Scriptable
+        local x, y, z = camera.CFrame:ToEulerAnglesYXZ()
+        camera.CFrame = CFrame.new(camera.CFrame.Position) * CFrame.fromEulerAnglesYXZ(x + math.rad(45), y, z)
+        task.wait(0.02)
+        camera.CameraType = Enum.CameraType.Custom
+    end
+    waitms(150)
 
-    -- 5. Cambiar rápido a TTK (Slot 3) - Habilidad Z (Remate direccional en el aire)
+    -- 4. Usa C de Sanguíneo (Ya está equipado)
+    dirigirAtaque(objetivoActual)
+    pressKey("C", 0.08)
+    waitms(850)
+
+    -- 5. Equipa TTK (Slot 3) y usa Z
     equiparSlot(SLOTS.TTK)
-    waitms(80)
-    pressKey("Z", 0.1)
-    waitms(450) 
+    dirigirAtaque(objetivoActual)
+    waitms(50)
+    pressKey("Z", 0.08)
+    waitms(400) 
 
-    -- 6. Finalizar volviendo a Sanguíneo (Slot 1) - Habilidad X
+    -- 6. Regresa a Sanguíneo (Slot 1) y usa X para finalizar
     equiparSlot(SLOTS.Sanguine)
-    waitms(80)
-    pressKey("X", 0.1)
+    dirigirAtaque(objetivoActual)
+    waitms(50)
+    pressKey("X", 0.08)
     
-    -- Liberación y limpieza segura de la cámara
-    if camConnection then camConnection:Disconnect(); camConnection = nil end
-    camera.CameraType = Enum.CameraType.Custom
     comboEjecutandose = false
 end
 
+-- Ejecutor táctil con animación para el botón de combo "L"
 buttonCombo.TouchTap:Connect(function()
     local normalSize = buttonCombo.Size
     local pressedSize = UDim2.new(0, 47, 0, 47)
