@@ -1,6 +1,6 @@
 --[[
-    Legna Hub V7 - Multi-Game Rage Cam-Lock (Blox Fruits & Duelos MM2)
-    Features: Multi-Game Target Scan, Non-Floating Head Anchor, Aggressive Target Lock
+    Legna Hub V9 - Multi-Game Intelligent Silent Aim (Duelos & Blox Fruits)
+    Features: PlaceId Match Check, Auto Ally Bypass for Duelos, Silent Bullet Magnet
 ]]
 
 -- Services
@@ -9,9 +9,11 @@ local RunService = game:GetService("RunService")
 
 -- Variables
 local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
 local HeartbeatConnection = nil
 local IsAimbotActive = false
+local CurrentPlaceId = game.PlaceId
 
 -- UI Notification System
 local function ShowNotification(message, color)
@@ -56,7 +58,7 @@ local function ShowNotification(message, color)
     end)
 end
 
--- Validates that the target is a valid mortal opponent across different modes
+-- Universal Mortal Target Scan with Game Detection
 local function IsValidTarget(player)
     if player == LocalPlayer then return false end
     
@@ -66,28 +68,28 @@ local function IsValidTarget(player)
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     local rootPart = character:FindFirstChild("HumanoidRootPart")
     
-    -- 1. Must be physically alive and accessible
     if not humanoid or not rootPart or humanoid.Health <= 0 then 
         return false 
     end
     
-    -- 2. Bypass standard global safe spawn forcefields
     if character:FindFirstChildOfClass("ForceField") then 
         return false 
     end
-    
-    -- 3. Dynamic Multi-Game Team Filter Override
-    -- In MM2/Duelos everyone can be targeted or teams change constantly; filters only active if teams are structural
-    if player.Team and player.Team == LocalPlayer.Team and #player.Team:GetPlayers() > 1 and game.PlaceId ~= 2753915549 then
-        -- Optional: Keeps teams active ONLY if not on standard FFA maps
-        return true
+
+    -- [CRITICAL FIX] If playing "Duelos" (or any match base game), strictly ignore same team members
+    -- Uses a loose check if PlaceId matches common shooter IDs or if team exists and matches
+    if player.Team and player.Team == LocalPlayer.Team then
+        -- Only filter teams if we are NOT in Blox Fruits (Blox Fruits PlaceId starts with 275 or 444)
+        local strId = tostring(CurrentPlaceId)
+        if not (string.sub(strId, 1, 3) == "275" or string.sub(strId, 1, 3) == "444") then
+            return false -- It's a real teammate in Duelos, IGNORE HIM!
+        end
     end
 
     return true
 end
 
--- Universal Absolute Proximity Engine
-local function GetClosestVulnerableTarget()
+local function GetClosestTarget()
     local ClosestTarget = nil
     local MaxDistance = math.huge
     local MyChar = LocalPlayer.Character
@@ -108,7 +110,30 @@ local function GetClosestVulnerableTarget()
     return ClosestTarget
 end
 
--- Extreme Force Vector Locking Engine
+-- Hooking Engine: Intercepts Mouse.Hit and Mouse.Target
+local function HookMouseData()
+    local RawMetatable = getrawmetatable(game)
+    setreadonly(RawMetatable, false)
+    local OldIndex = RawMetatable.__index
+
+    RawMetatable.__index = newcclosure(function(self, index)
+        if IsAimbotActive and self == Mouse then
+            local Target = GetClosestTarget()
+            if Target then
+                local TargetPart = Target.Parent:FindFirstChild("Head") or Target
+                if index == "Hit" then
+                    return TargetPart.CFrame
+                elseif index == "Target" then
+                    return TargetPart
+                end
+            end
+        end
+        return OldIndex(self, index)
+    end)
+    setreadonly(RawMetatable, true)
+end
+
+-- Camera Rotation Step Engine
 local function StartTracking()
     if HeartbeatConnection then return end
 
@@ -117,17 +142,16 @@ local function StartTracking()
         local MyRoot = MyChar and MyChar:FindFirstChild("HumanoidRootPart")
         if not MyRoot then return end
 
-        local Target = GetClosestVulnerableTarget()
+        local Target = GetClosestTarget()
         if Target then
-            -- High Velocity Prediction Vector (Locks jumpers flawlessly)
             local TargetVelocity = Target.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
             local PredictedPosition = Target.Position + (TargetVelocity * 0.05)
 
-            -- Absolute instant body alignment facing the hit position
+            -- Rotate character base cleanly towards target axis
             MyRoot.CFrame = CFrame.lookAt(MyRoot.Position, Vector3.new(PredictedPosition.X, MyRoot.Position.Y, PredictedPosition.Z))
 
-            -- Anti-Float Camera Matrix: Constantly realigns directly to your physical head position
-            local CameraDistance = 11 -- Ideal field of view length for aiming guns or swords
+            -- Head Anchor Matrix
+            local CameraDistance = 11
             local CameraHeight = 3.5
             local DirectionVector = (PredictedPosition - MyRoot.Position).Unit
             
@@ -178,7 +202,7 @@ local function CreateTacticalButton()
         IsAimbotActive = not IsAimbotActive
         if IsAimbotActive then
             StartTracking()
-            ShowNotification("LEGNA: MULTI-GAME ACTIVE", Color3.fromRGB(0, 255, 120))
+            ShowNotification("LEGNA: SMART LOCK SYSTEM ON", Color3.fromRGB(0, 255, 120))
             HitboxButton.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
             HitboxButton.BackgroundTransparency = 0.6
         else
@@ -191,7 +215,8 @@ local function CreateTacticalButton()
 end
 
 -- Initialization
+HookMouseData()
 task.spawn(function()
-    ShowNotification("Legna Hub Rage V7 Multi-Game Loaded.", Color3.fromRGB(0, 220, 255))
+    ShowNotification("Legna Hub Smart V9 Loaded.", Color3.fromRGB(0, 220, 255))
 end)
 task.spawn(CreateTacticalButton)
