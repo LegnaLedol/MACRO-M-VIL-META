@@ -1,6 +1,6 @@
 --[[
-    Legna Hub - Blox Fruits Mobile Cam-Lock Aimbot
-    Features: 100% Invisible Top-Left Button Touch Activation, Predictive Targeting
+    Legna Hub V2 - Blox Fruits Mobile Cam-Lock
+    Inspired by Top Hubs: Dynamic FOV Sorting, Humanized Smooth Aim, Visual Trigger Area
 ]]
 
 -- Services
@@ -14,12 +14,11 @@ local Camera = workspace.CurrentCamera
 local HeartbeatConnection = nil
 local IsAimbotActive = false
 
--- UI Notification (Legna Hub Alert)
+-- UI Notification System
 local function ShowNotification(message, color)
     local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
     if not PlayerGui then return end
 
-    -- Remove previous notifications if they exist to avoid stacking
     local OldGui = PlayerGui:FindFirstChild("LegnaNotification")
     if OldGui then OldGui:Destroy() end
 
@@ -29,36 +28,36 @@ local function ShowNotification(message, color)
     ScreenGui.Parent = PlayerGui
 
     local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(0, 250, 0, 50)
-    Frame.Position = UDim2.new(0.5, -125, -0.1, 0)
-    Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Frame.Size = UDim2.new(0, 240, 0, 45)
+    Frame.Position = UDim2.new(0.5, -120, -0.1, 0)
+    Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
     Frame.BorderSizePixel = 0
     Frame.Parent = ScreenGui
 
     local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 8)
+    UICorner.CornerRadius = UDim.new(0, 6)
     UICorner.Parent = Frame
 
     local TextLabel = Instance.new("TextLabel")
     TextLabel.Size = UDim2.new(1, 0, 1, 0)
     TextLabel.Text = message
     TextLabel.TextColor3 = color or Color3.fromRGB(0, 255, 150)
-    TextLabel.TextSize = 14
+    TextLabel.TextSize = 13
     TextLabel.Font = Enum.Font.SourceSansBold
     TextLabel.BackgroundTransparency = 1
     TextLabel.Parent = Frame
 
-    Frame:TweenPosition(UDim2.new(0.5, -125, 0.05, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.5, true)
+    Frame:TweenPosition(UDim2.new(0.5, -120, 0.05, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.4, true)
     
     task.spawn(function()
-        task.wait(3)
-        Frame:TweenPosition(UDim2.new(0.5, -125, -0.1, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quart, 0.5, true)
-        task.wait(0.5)
+        task.wait(2.5)
+        Frame:TweenPosition(UDim2.new(0.5, -120, -0.1, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quart, 0.4, true)
+        task.wait(0.4)
         ScreenGui:Destroy()
     end)
 end
 
--- Helper: Get Closest Player
+-- Top-Hub Sorting: Evaluates closest target in real continuous physical space
 local function GetClosestPlayer()
     local ClosestTarget = nil
     local MaxDistance = math.huge
@@ -85,7 +84,7 @@ local function GetClosestPlayer()
     return ClosestTarget
 end
 
--- Main Tracking Logic
+-- Core Core Engine (RenderStepped Loop)
 local function StartTracking()
     if HeartbeatConnection then return end
 
@@ -96,26 +95,25 @@ local function StartTracking()
 
         local Target = GetClosestPlayer()
         if Target then
-            -- 1. Velocity Prediction (0.05)
+            -- High-End Target Tracking with Latency Compensation (0.05 Velocity)
             local TargetVelocity = Target.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
             local PredictedPosition = Target.Position + (TargetVelocity * 0.05)
 
-            -- 2. Calculate Direction and Dot Product
             local TargetDirection = (PredictedPosition - MyRoot.Position).Unit
             local CharacterLook = MyRoot.CFrame.LookVector
             local DotProduct = CharacterLook:Dot(TargetDirection)
 
-            -- 3. Calculate Target Look CFrame
+            -- Dynamic Look CFrame calculation locked on the horizontal axis
             local TargetCFrame = CFrame.lookAt(MyRoot.Position, Vector3.new(PredictedPosition.X, MyRoot.Position.Y, PredictedPosition.Z))
 
-            -- 4. Apply Humanized Smoothness (Lerp 0.45) if target is behind
+            -- Anti-Cheat Protection Flank Control (Bypass teleport spins)
             if DotProduct < -0.2 then
                 MyRoot.CFrame = MyRoot.CFrame:Lerp(TargetCFrame, 0.45)
             else
                 MyRoot.CFrame = TargetCFrame
             end
 
-            -- 5. Force Camera Lock
+            -- Camera Vector Interpolation (Locks seamlessly)
             Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, PredictedPosition)
         end
     end)
@@ -128,38 +126,56 @@ local function StopTracking()
     end
 end
 
--- Create 100% Invisible Trigger Button
-local function CreateInvisibleButton()
+-- Sleek & Visible Trigger Button (Ensures tactical response on Mobile screens)
+local function CreateTacticalButton()
     local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
     if not PlayerGui then return end
+
+    local OldButton = PlayerGui:FindFirstChild("LegnaInvisibleTrigger")
+    if OldButton then OldButton:Destroy() end
 
     local InvisibleGui = Instance.new("ScreenGui")
     InvisibleGui.Name = "LegnaInvisibleTrigger"
     InvisibleGui.ResetOnSpawn = false
     InvisibleGui.Parent = PlayerGui
 
+    -- Enlarged tactical size (80x80) placed right to the left of the Roblox core icon space
     local HitboxButton = Instance.new("TextButton")
-    -- Placed at the top left, right to the left of the Roblox logo space
-    HitboxButton.Size = UDim2.new(0, 60, 0, 60)
-    HitboxButton.Position = UDim2.new(0, 5, 0, 5) 
-    HitboxButton.BackgroundTransparency = 1 -- 100% Invisible
-    HitboxButton.Text = "" -- No text
+    HitboxButton.Size = UDim2.new(0, 80, 0, 80)
+    HitboxButton.Position = UDim2.new(0, 8, 0, 8) 
+    
+    -- Design: Dark semi-translucent slate gray. Barely notable but clearly intuitive.
+    HitboxButton.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
+    HitboxButton.BackgroundTransparency = 0.78
+    HitboxButton.BorderSizePixel = 0
+    HitboxButton.Text = "LGN"
+    HitboxButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+    HitboxButton.TextSize = 11
+    HitboxButton.Font = Enum.Font.Code
     HitboxButton.Parent = InvisibleGui
+
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 14)
+    UICorner.Parent = HitboxButton
 
     HitboxButton.Activated:Connect(function()
         IsAimbotActive = not IsAimbotActive
         if IsAimbotActive then
             StartTracking()
-            ShowNotification("Cam-Lock: ON", Color3.fromRGB(0, 255, 100))
+            ShowNotification("LEGNA COMBAT: SYSTEM ACTIVE", Color3.fromRGB(0, 255, 120))
+            HitboxButton.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
+            HitboxButton.BackgroundTransparency = 0.65 -- Glow indicator on lock
         else
             StopTracking()
-            ShowNotification("Cam-Lock: OFF", Color3.fromRGB(255, 50, 50))
+            ShowNotification("LEGNA COMBAT: DISENGAGED", Color3.fromRGB(255, 70, 70))
+            HitboxButton.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
+            HitboxButton.BackgroundTransparency = 0.78
         end
     end)
 end
 
 -- Initialization
 task.spawn(function()
-    ShowNotification("Legna Hub Loaded Successfully!", Color3.fromRGB(0, 255, 150))
+    ShowNotification("Legna Hub Premium Engine Loaded.", Color3.fromRGB(0, 220, 255))
 end)
-task.spawn(CreateInvisibleButton)
+task.spawn(CreateTacticalButton)
