@@ -1,122 +1,88 @@
-local player = game.Players.LocalPlayer
-local UIS = game:GetService("UserInputService")
-local VIM = game:GetService("VirtualInputManager")
+local function waitms(ms)
+    task.wait(ms / 1000)
+end
 
--- CONFIG
-local delayC = 0.9
-local enabled = true
+local function press(key, hold)
+    keyDown(key)
+    task.wait(hold or 0.05)
+    keyUp(key)
+end
+
+local function Combo()
+
+    -- 1. PORTAL Z
+    press(0x5A, 0.08)
+    waitms(900)
+
+    -- mirar abajo
+    mousemoverel(0, 20)
+    waitms(150)
+
+    -- 2. TTK X
+    press(0x58, 0.08)
+    waitms(250)
+
+    -- 3. SANGUINE X
+    press(0x58, 0.08)
+    waitms(300)
+
+    -- 4. SANGUINE Z
+    press(0x5A, 0.08)
+    waitms(400)
+
+    -- mirar arriba
+    mousemoverel(0, -25)
+    waitms(150)
+
+    -- 5. SANGUINE C
+    press(0x43, 0.08)
+    waitms(850)
+
+    -- 6. TTK Z
+    press(0x5A, 0.08)
+end
+local player = game.Players.LocalPlayer
 
 -- GUI
 local gui = Instance.new("ScreenGui")
+gui.Name = "RGB_L_Button"
+gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 140)
-frame.Position = UDim2.new(0.7, 0, 0.5, 0)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-frame.Parent = gui
-Instance.new("UICorner", frame)
+-- BOTÓN
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 55, 0, 55)
+button.Position = UDim2.new(0.85, 0, 0.5, 0)
+button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+button.Text = "L"
+button.TextScaled = true
+button.Font = Enum.Font.GothamBlack
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Parent = gui
 
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1,0,0,30)
-title.Text = "Combo Panel"
-title.BackgroundTransparency = 1
-title.TextColor3 = Color3.new(1,1,1)
-title.Parent = frame
+-- redondo estilo HUD
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(1, 0)
+corner.Parent = button
 
-local comboBtn = Instance.new("TextButton")
-comboBtn.Size = UDim2.new(0.8,0,0,40)
-comboBtn.Position = UDim2.new(0.1,0,0.35,0)
-comboBtn.Text = "EXECUTE"
-comboBtn.BackgroundColor3 = Color3.fromRGB(100,0,200)
-comboBtn.TextColor3 = Color3.new(1,1,1)
-comboBtn.Parent = frame
-Instance.new("UICorner", comboBtn)
+-- borde glow decorativo
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(255,255,255)
+stroke.Parent = button
 
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0.8,0,0,25)
-toggleBtn.Position = UDim2.new(0.1,0,0.7,0)
-toggleBtn.Text = "ON"
-toggleBtn.BackgroundColor3 = Color3.fromRGB(0,150,0)
-toggleBtn.TextColor3 = Color3.new(1,1,1)
-toggleBtn.Parent = frame
-Instance.new("UICorner", toggleBtn)
-
--- DRAG
-local dragging, dragStart, startPos
-
-frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = frame.Position
-	end
+-- 🌈 RGB ANIMACIÓN
+task.spawn(function()
+    while true do
+        for i = 0, 1, 0.01 do
+            button.BackgroundColor3 = Color3.fromHSV(i, 1, 1)
+            stroke.Color = Color3.fromHSV(i, 1, 1)
+            task.wait(0.02)
+        end
+    end
 end)
 
-frame.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.Touch then
-		dragging = false
-	end
-end)
-
-UIS.InputChanged:Connect(function(input)
-	if dragging and input.UserInputType == Enum.UserInputType.Touch then
-		local delta = input.Position - dragStart
-		frame.Position = UDim2.new(
-			startPos.X.Scale,
-			startPos.X.Offset + delta.X,
-			startPos.Y.Scale,
-			startPos.Y.Offset + delta.Y
-		)
-	end
-end)
-
--- TOGGLE
-toggleBtn.MouseButton1Click:Connect(function()
-	enabled = not enabled
-	
-	if enabled then
-		toggleBtn.Text = "ON"
-		toggleBtn.BackgroundColor3 = Color3.fromRGB(0,150,0)
-	else
-		toggleBtn.Text = "OFF"
-		toggleBtn.BackgroundColor3 = Color3.fromRGB(150,0,0)
-	end
-end)
-
--- COMBO
-comboBtn.MouseButton1Click:Connect(function()
-	if not enabled then return end
-	
-	task.spawn(function()
-
-		VIM:SendKeyEvent(true, "Z", false, game)
-		task.wait(0.15)
-
-		VIM:SendKeyEvent(true, "Three", false, game)
-		task.wait(0.2)
-		VIM:SendKeyEvent(true, "X", false, game)
-
-		task.wait(0.15)
-
-		VIM:SendKeyEvent(true, "Four", false, game)
-		task.wait(0.2)
-		VIM:SendKeyEvent(true, "X", false, game)
-		task.wait(0.15)
-		VIM:SendKeyEvent(true, "Z", false, game)
-
-		task.wait(0.15)
-
-		mousemoverel(0, -300)
-		task.wait(0.1)
-
-		VIM:SendKeyEvent(true, "C", false, game)
-
-		task.wait(delayC)
-
-		VIM:SendKeyEvent(true, "Three", false, game)
-		task.wait(0.15)
-		VIM:SendKeyEvent(true, "Z", false, game)
-
-	end)
+-- 📌 CLICK (SIN COOLDOWN, SIN BLOQUEOS)
+button.MouseButton1Click:Connect(function()
+    Combo() -- tu función aquí
 end)
