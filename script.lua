@@ -1,12 +1,11 @@
 --[[
-    Legna Hub V2 - Blox Fruits Mobile Cam-Lock
-    Inspired by Top Hubs: Dynamic FOV Sorting, Humanized Smooth Aim, Visual Trigger Area
+    Legna Hub V3.1 - Blox Fruits Mobile Cam-Lock (Rage Aggressive Mode)
+    Features: Forced Target Locking, Absolute Frame Anchoring, Micro Top Edge Button (40x40)
 ]]
 
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 -- Variables
 local LocalPlayer = Players.LocalPlayer
@@ -57,7 +56,7 @@ local function ShowNotification(message, color)
     end)
 end
 
--- Top-Hub Sorting: Evaluates closest target in real continuous physical space
+-- Absolute Proximity Target Scan
 local function GetClosestPlayer()
     local ClosestTarget = nil
     local MaxDistance = math.huge
@@ -84,7 +83,7 @@ local function GetClosestPlayer()
     return ClosestTarget
 end
 
--- Core Core Engine (RenderStepped Loop)
+-- Extreme Forced Tracking Engine
 local function StartTracking()
     if HeartbeatConnection then return end
 
@@ -95,25 +94,13 @@ local function StartTracking()
 
         local Target = GetClosestPlayer()
         if Target then
-            -- High-End Target Tracking with Latency Compensation (0.05 Velocity)
             local TargetVelocity = Target.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
             local PredictedPosition = Target.Position + (TargetVelocity * 0.05)
 
-            local TargetDirection = (PredictedPosition - MyRoot.Position).Unit
-            local CharacterLook = MyRoot.CFrame.LookVector
-            local DotProduct = CharacterLook:Dot(TargetDirection)
+            -- Instant Rotation
+            MyRoot.CFrame = CFrame.lookAt(MyRoot.Position, Vector3.new(PredictedPosition.X, MyRoot.Position.Y, PredictedPosition.Z))
 
-            -- Dynamic Look CFrame calculation locked on the horizontal axis
-            local TargetCFrame = CFrame.lookAt(MyRoot.Position, Vector3.new(PredictedPosition.X, MyRoot.Position.Y, PredictedPosition.Z))
-
-            -- Anti-Cheat Protection Flank Control (Bypass teleport spins)
-            if DotProduct < -0.2 then
-                MyRoot.CFrame = MyRoot.CFrame:Lerp(TargetCFrame, 0.45)
-            else
-                MyRoot.CFrame = TargetCFrame
-            end
-
-            -- Camera Vector Interpolation (Locks seamlessly)
+            -- Brutal Cam Lock
             Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, PredictedPosition)
         end
     end)
@@ -126,7 +113,7 @@ local function StopTracking()
     end
 end
 
--- Sleek & Visible Trigger Button (Ensures tactical response on Mobile screens)
+-- Micro Position Tactical Button
 local function CreateTacticalButton()
     local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
     if not PlayerGui then return end
@@ -139,43 +126,43 @@ local function CreateTacticalButton()
     InvisibleGui.ResetOnSpawn = false
     InvisibleGui.Parent = PlayerGui
 
-    -- Enlarged tactical size (80x80) placed right to the left of the Roblox core icon space
     local HitboxButton = Instance.new("TextButton")
-    HitboxButton.Size = UDim2.new(0, 80, 0, 80)
-    HitboxButton.Position = UDim2.new(0, 8, 0, 8) 
+    -- Reducido a tamaño micro (40x40) para máxima discreción
+    HitboxButton.Size = UDim2.new(0, 40, 0, 40)
+    -- Pegado al borde superior absoluto
+    HitboxButton.Position = UDim2.new(0, 8, 0, 0) 
     
-    -- Design: Dark semi-translucent slate gray. Barely notable but clearly intuitive.
     HitboxButton.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
-    HitboxButton.BackgroundTransparency = 0.78
+    HitboxButton.BackgroundTransparency = 0.8
     HitboxButton.BorderSizePixel = 0
-    HitboxButton.Text = "LGN"
-    HitboxButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-    HitboxButton.TextSize = 11
+    HitboxButton.Text = "L"
+    HitboxButton.TextColor3 = Color3.fromRGB(180, 180, 180)
+    HitboxButton.TextSize = 10
     HitboxButton.Font = Enum.Font.Code
     HitboxButton.Parent = InvisibleGui
 
     local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 14)
+    UICorner.CornerRadius = UDim.new(0, 8)
     UICorner.Parent = HitboxButton
 
     HitboxButton.Activated:Connect(function()
         IsAimbotActive = not IsAimbotActive
         if IsAimbotActive then
             StartTracking()
-            ShowNotification("LEGNA COMBAT: SYSTEM ACTIVE", Color3.fromRGB(0, 255, 120))
+            ShowNotification("LEGNA: RAGE ON", Color3.fromRGB(0, 255, 120))
             HitboxButton.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
-            HitboxButton.BackgroundTransparency = 0.65 -- Glow indicator on lock
+            HitboxButton.BackgroundTransparency = 0.6
         else
             StopTracking()
-            ShowNotification("LEGNA COMBAT: DISENGAGED", Color3.fromRGB(255, 70, 70))
+            ShowNotification("LEGNA: RAGE OFF", Color3.fromRGB(255, 70, 70))
             HitboxButton.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
-            HitboxButton.BackgroundTransparency = 0.78
+            HitboxButton.BackgroundTransparency = 0.8
         end
     end)
 end
 
 -- Initialization
 task.spawn(function()
-    ShowNotification("Legna Hub Premium Engine Loaded.", Color3.fromRGB(0, 220, 255))
+    ShowNotification("Legna Hub Rage Engine Loaded.", Color3.fromRGB(0, 220, 255))
 end)
 task.spawn(CreateTacticalButton)
