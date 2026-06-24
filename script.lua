@@ -1,4 +1,90 @@
 local player = game.Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService")
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "L_Button_Mobile"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- BOTÓN
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 50, 0, 50)
+button.Position = UDim2.new(0.8, 0, 0.5, 0)
+button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+button.Text = "L"
+button.TextScaled = true
+button.Font = Enum.Font.GothamBlack
+button.TextColor3 = Color3.fromRGB(255,255,255)
+button.Parent = gui
+
+-- REDONDO
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(1, 0)
+corner.Parent = button
+
+-- 📌 ANIMACIÓN CLICK
+local normalSize = button.Size
+local pressedSize = UDim2.new(0, 44, 0, 44)
+
+local function animatePress()
+    local shrink = TweenService:Create(button, TweenInfo.new(0.08), {Size = pressedSize})
+    local expand = TweenService:Create(button, TweenInfo.new(0.08), {Size = normalSize})
+
+    shrink:Play()
+    shrink.Completed:Wait()
+    expand:Play()
+end
+
+-- 📌 DRAG (TOUCH FRIENDLY)
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    button.Position = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
+    )
+end
+
+button.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = button.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+button.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- 📌 CLICK
+button.MouseButton1Click:Connect(function()
+    animatePress()
+    
+    -- 👇 TU FUNCIÓN AQUÍ
+    -- Combo()
+end)
+local player = game.Players.LocalPlayer
 
 -- =========================
 -- 🔧 FUNCIONES DEL COMBO
@@ -46,47 +132,3 @@ local function Combo()
     -- 6. TTK Z
     press(0x5A, 0.08)
 end
-
--- =========================
--- 🎮 GUI + BOTÓN
--- =========================
-local gui = Instance.new("ScreenGui")
-gui.Name = "RGB_L_Button"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
-
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 55, 0, 55)
-button.Position = UDim2.new(0.85, 0, 0.5, 0)
-button.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-button.Text = "L"
-button.TextScaled = true
-button.Font = Enum.Font.GothamBlack
-button.TextColor3 = Color3.new(1, 1, 1)
-button.Parent = gui
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(1, 0)
-corner.Parent = button
-
-local stroke = Instance.new("UIStroke")
-stroke.Thickness = 2
-stroke.Color = Color3.fromRGB(255,255,255)
-stroke.Parent = button
-
--- 🌈 RGB LOOP
-task.spawn(function()
-    while true do
-        for i = 0, 1, 0.01 do
-            local c = Color3.fromHSV(i, 1, 1)
-            button.BackgroundColor3 = c
-            stroke.Color = c
-            task.wait(0.02)
-        end
-    end
-end)
-
--- 📌 CLICK
-button.MouseButton1Click:Connect(function()
-    Combo()
-end)
