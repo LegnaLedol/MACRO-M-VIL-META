@@ -1,6 +1,6 @@
 --[[
-    Legna Hub V3.1 - Blox Fruits Mobile Cam-Lock (Rage Aggressive Mode)
-    Features: Forced Target Locking, Absolute Frame Anchoring, Micro Top Edge Button (40x40)
+    Legna Hub V4 - Blox Fruits Mobile Cam-Lock (Rage Anti-Team Mode)
+    Features: Team/Ally Bypass, Relative Camera Locking, Micro Top Edge Button (40x40)
 ]]
 
 -- Services
@@ -56,8 +56,8 @@ local function ShowNotification(message, color)
     end)
 end
 
--- Absolute Proximity Target Scan
-local function GetClosestPlayer()
+-- Smart Target Scan: Ignores Allies and Teammates
+local function GetClosestEnemy()
     local ClosestTarget = nil
     local MaxDistance = math.huge
     local MyChar = LocalPlayer.Character
@@ -66,7 +66,8 @@ local function GetClosestPlayer()
     if not MyRoot then return nil end
 
     for _, Player in ipairs(Players:GetPlayers()) do
-        if Player ~= LocalPlayer and Player.Character then
+        -- Check that it is an enemy player (Different team / faction)
+        if Player ~= LocalPlayer and Player.Character and Player.Team ~= LocalPlayer.Team then
             local TargetChar = Player.Character
             local TargetRoot = TargetChar:FindFirstChild("HumanoidRootPart")
             local TargetHumanoid = TargetChar:FindFirstChildOfClass("Humanoid")
@@ -83,7 +84,7 @@ local function GetClosestPlayer()
     return ClosestTarget
 end
 
--- Extreme Forced Tracking Engine
+-- Real Relative Lock Engine
 local function StartTracking()
     if HeartbeatConnection then return end
 
@@ -92,16 +93,20 @@ local function StartTracking()
         local MyRoot = MyChar and MyChar:FindFirstChild("HumanoidRootPart")
         if not MyRoot then return end
 
-        local Target = GetClosestPlayer()
+        local Target = GetClosestEnemy()
         if Target then
             local TargetVelocity = Target.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
             local PredictedPosition = Target.Position + (TargetVelocity * 0.05)
 
-            -- Instant Rotation
+            -- Force character to constantly look at target axis
             MyRoot.CFrame = CFrame.lookAt(MyRoot.Position, Vector3.new(PredictedPosition.X, MyRoot.Position.Y, PredictedPosition.Z))
 
-            -- Brutal Cam Lock
-            Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, PredictedPosition)
+            -- Relative Camera Lock: Keeps following your character but rotates view to enemy
+            local CameraDistance = (Camera.CFrame.Position - MyRoot.Position).Magnitude
+            local NewCameraDirection = (PredictedPosition - MyRoot.Position).Unit
+            
+            -- Re-calculates camera matrix relative to your avatar's physical placement
+            Camera.CFrame = CFrame.lookAt(MyRoot.Position - (NewCameraDirection * CameraDistance) + Vector3.new(0, 3, 0), PredictedPosition)
         end
     end)
 end
@@ -127,9 +132,7 @@ local function CreateTacticalButton()
     InvisibleGui.Parent = PlayerGui
 
     local HitboxButton = Instance.new("TextButton")
-    -- Reducido a tamaño micro (40x40) para máxima discreción
     HitboxButton.Size = UDim2.new(0, 40, 0, 40)
-    -- Pegado al borde superior absoluto
     HitboxButton.Position = UDim2.new(0, 8, 0, 0) 
     
     HitboxButton.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
@@ -149,12 +152,12 @@ local function CreateTacticalButton()
         IsAimbotActive = not IsAimbotActive
         if IsAimbotActive then
             StartTracking()
-            ShowNotification("LEGNA: RAGE ON", Color3.fromRGB(0, 255, 120))
+            ShowNotification("LEGNA: ANTI-TEAM LOCK", Color3.fromRGB(0, 255, 120))
             HitboxButton.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
             HitboxButton.BackgroundTransparency = 0.6
         else
             StopTracking()
-            ShowNotification("LEGNA: RAGE OFF", Color3.fromRGB(255, 70, 70))
+            ShowNotification("LEGNA: DESACTIVADO", Color3.fromRGB(255, 70, 70))
             HitboxButton.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
             HitboxButton.BackgroundTransparency = 0.8
         end
@@ -163,6 +166,6 @@ end
 
 -- Initialization
 task.spawn(function()
-    ShowNotification("Legna Hub Rage Engine Loaded.", Color3.fromRGB(0, 220, 255))
+    ShowNotification("Legna Hub Smart Engine Loaded.", Color3.fromRGB(0, 220, 255))
 end)
 task.spawn(CreateTacticalButton)
