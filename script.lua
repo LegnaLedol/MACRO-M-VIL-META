@@ -1,56 +1,24 @@
 local player = game.Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local VirtualUser = game:GetService("VirtualUser")
 
--- CONFIGURACIÓN DEL SET META
-local MI_SET = {
-    Fruit = "Portal",
-    Melee = "Sanguine Art",
-    Sword = "True Triple Katana",
-    Gun = "Soul Guitar"
-}
-
+-- CONFIGURACIÓN DE APUNTADO Y PERFIL TOKYO GHOUL
+local GHOUL_ASSET_ID = "rbxassetid://9073144883" -- ID Replicado de la Máscara de Kaneki
 local aimPlayers = true
 local aimNPCs = false
 local camLockActive = false
+
 local objetivoActual = nil
 local camera = workspace.CurrentCamera
 local camConnection = nil
 
--- SISTEMA DE INPUT NATIVO PARA MÓVIL (Bypass total a VirtualInputManager)
-local function simularTouchMovel()
-    -- Simula un toque real de pantalla en el centro para activar cualquier habilidad equipada
-    VirtualUser:CaptureController()
-    VirtualUser:Button1Down(Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2))
-    RunService.Heartbeat:Wait()
-    VirtualUser:Button1Up(Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2))
-end
-
--- Cambiar de arma de forma forzada instantáneamente sin retrasos
-local function equiparHerramientaPC(nombreReal)
-    local backpack = player:WaitForChild("Backpack")
-    local character = player.Character
-    if not character then return end
-    
-    local armaActual = character:FindFirstChildOfClass("Tool")
-    if armaActual and armaActual.Name ~= nombreReal then
-        armaActual.Parent = backpack
-    end
-    
-    local nuevaArma = backpack:FindFirstChild(nombreReal)
-    if nuevaArma then
-        nuevaArma.Parent = character
-    end
-end
-
--- PRO AIMBOT METHOD: Filtro de objetivos óptimos en base a distancia real
-local function obtenerObjetivoPro()
+-- FILTRO DE RASTREO CORPORAL NATIVO (Inspirado en Hermanos Hub)
+local function obtenerObjetivoHermanos()
     local personajeLocal = player.Character
     if not personajeLocal or not personajeLocal:FindFirstChild("HumanoidRootPart") then return nil end
     local menorDistancia = math.huge
     local mejorObjetivo = nil
-    local maxRango = 140
+    local maxRango = 150
 
     local function verificar(modelo)
         if modelo and modelo:FindFirstChild("HumanoidRootPart") and modelo:FindFirstChildOfClass("Humanoid") then
@@ -81,271 +49,188 @@ local function obtenerObjetivoPro()
 end
 
 -- =========================================================
---        NUEVA IU PREMIUM: BOTONES SEPARADOS Y MÓVILES
+--      DISEÑO RÉPLICA HERMANOS HUB (EDICIÓN GRIS GHOUL)
 -- =========================================================
 local gui = Instance.new("ScreenGui")
-gui.Name = "L_Pro_Separated_Hub"
+gui.Name = "HermanosHub_GrayGhoul"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 
--- 1. BOTÓN PRINCIPAL DEL COMBO "LAUNCH"
-local buttonCombo = Instance.new("TextButton")
-buttonCombo.Size = UDim2.new(0, 75, 0, 42)
-buttonCombo.Position = UDim2.new(0.75, 0, 0.45, 0)
-buttonCombo.BackgroundColor3 = Color3.fromRGB(24, 18, 36)
-buttonCombo.BackgroundTransparency = 0.15
-buttonCombo.Text = "LAUNCH"
-buttonCombo.Font = Enum.Font.GothamBold
-buttonCombo.TextSize = 11
-buttonCombo.TextColor3 = Color3.fromRGB(235, 235, 255)
-buttonCombo.Active = true
-buttonCombo.Draggable = true
-buttonCombo.Parent = gui
+-- Contenedor General del Menú Flotante
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 165, 0, 210)
+mainFrame.Position = UDim2.new(0.78, 0, 0.35, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 20) -- Gris Oscuro Táctico
+mainFrame.BackgroundTransparency = 0.05
+mainFrame.Active = true
+mainFrame.Draggable = true -- Movible libremente en pantallas móviles
+mainFrame.Parent = gui
 
-local cornerCombo = Instance.new("UICorner")
-cornerCombo.CornerRadius = UDim.new(0, 8)
-cornerCombo.Parent = buttonCombo
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 10)
+mainCorner.Parent = mainFrame
 
-local strokeCombo = Instance.new("UIStroke")
-strokeCombo.Thickness = 1.5
-strokeCombo.Color = Color3.fromRGB(115, 60, 195)
-strokeCombo.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-strokeCombo.Parent = buttonCombo
+local mainStroke = Instance.new("UIStroke")
+mainStroke.Thickness = 1.8
+mainStroke.Color = Color3.fromRGB(55, 55, 60) -- Contorno Gris Cenizo
+mainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+mainStroke.Parent = mainFrame
 
--- 2. BOTÓN INTERRUPTOR: PVP
+-- SECCIÓN SUPERIOR DE BIENVENIDA (PERFIL GHOUL)
+local profileFrame = Instance.new("Frame")
+profileFrame.Size = UDim2.new(0, 145, 0, 42)
+profileFrame.Position = UDim2.new(0.06, 0, 0.05, 0)
+profileFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 32)
+profileFrame.BackgroundTransparency = 0.3
+profileFrame.Parent = mainFrame
+
+local profileCorner = Instance.new("UICorner")
+profileCorner.CornerRadius = UDim.new(0, 6)
+profileCorner.Parent = profileFrame
+
+-- Miniatura de la Máscara Ghoul
+local ghoulImage = Instance.new("ImageLabel")
+ghoulImage.Size = UDim2.new(0, 32, 0, 32)
+ghoulImage.Position = UDim2.new(0.06, 0, 0.12, 0)
+ghoulImage.BackgroundColor3 = Color3.fromRGB(22, 22, 25)
+ghoulImage.Image = GHOUL_ASSET_ID
+ghoulImage.Parent = profileFrame
+
+local imgCorner = Instance.new("UICorner")
+imgCorner.CornerRadius = UDim.new(1, 0) -- Redondeado perfecto estilo avatar
+imgCorner.Parent = ghoulImage
+
+-- Etiquetas de Texto del Hub
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(0, 95, 0, 18)
+titleLabel.Position = UDim2.new(0.34, 0, 0.12, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "HERMANOS HUB"
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 10
+titleLabel.TextColor3 = Color3.fromRGB(225, 225, 230)
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = profileFrame
+
+local subLabel = Instance.new("TextLabel")
+subLabel.Size = UDim2.new(0, 95, 0, 12)
+subLabel.Position = UDim2.new(0.34, 0, 0.52, 0)
+subLabel.BackgroundTransparency = 1
+subLabel.Text = "Ghoul Edition v2"
+subLabel.Font = Enum.Font.Gotham
+subLabel.TextSize = 8
+subLabel.TextColor3 = Color3.fromRGB(130, 130, 135)
+subLabel.TextXAlignment = Enum.TextXAlignment.Left
+subLabel.Parent = profileFrame
+
+-- Línea Divisoria Estética
+local divider = Instance.new("Frame")
+divider.Size = UDim2.new(0, 145, 0, 1)
+divider.Position = UDim2.new(0.06, 0, 0.28, 0)
+divider.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+divider.BorderSizePixel = 0
+divider.Parent = mainFrame
+-- =========================================================
+--             CONMUTADORES DE INTERRUPCIÓN (IU)
+-- =========================================================
+
+-- INTERRUPTOR 1: PVP AIM
 local buttonPVP = Instance.new("TextButton")
-buttonPVP.Size = UDim2.new(0, 65, 0, 30)
-buttonPVP.Position = UDim2.new(0.75, 85, 0, 48)
-buttonPVP.BackgroundColor3 = Color3.fromRGB(15, 30, 20)
-buttonPVP.BackgroundTransparency = 0.2
-buttonPVP.Text = "PVP: ON"
+buttonPVP.Size = UDim2.new(0, 145, 0, 32)
+buttonPVP.Position = UDim2.new(0.06, 0, 0.34, 0)
+buttonPVP.BackgroundColor3 = Color3.fromRGB(35, 35, 38) -- Gris Activo Base
+buttonPVP.Text = "AIM JUGADOR: ON"
 buttonPVP.Font = Enum.Font.GothamBold
 buttonPVP.TextSize = 10
-buttonPVP.TextColor3 = Color3.fromRGB(255, 255, 255)
-buttonPVP.Active = true
-buttonPVP.Draggable = true
-buttonPVP.Parent = gui
+buttonPVP.TextColor3 = Color3.fromRGB(240, 240, 245)
+buttonPVP.Parent = mainFrame
 
-local cornerPVP = Instance.new("UICorner")
-cornerPVP.CornerRadius = UDim.new(0, 6)
-cornerPVP.Parent = buttonPVP
+local pvpCorner = Instance.new("UICorner")
+pvpCorner.CornerRadius = UDim.new(0, 5)
+pvpCorner.Parent = buttonPVP
 
-local strokePVP = Instance.new("UIStroke")
-strokePVP.Thickness = 1.2
-strokePVP.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-strokePVP.Parent = buttonPVP
-
--- 3. BOTÓN INTERRUPTOR: NPC
+-- INTERRUPTOR 2: NPC AIM
 local buttonNPC = Instance.new("TextButton")
-buttonNPC.Size = UDim2.new(0, 65, 0, 30)
-buttonNPC.Position = UDim2.new(0.75, 85, 0, 85)
-buttonNPC.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
-buttonNPC.BackgroundTransparency = 0.2
-buttonNPC.Text = "NPC: OFF"
+buttonNPC.Size = UDim2.new(0, 145, 0, 32)
+buttonNPC.Position = UDim2.new(0.06, 0, 0.53, 0)
+buttonNPC.BackgroundColor3 = Color3.fromRGB(24, 24, 26) -- Gris Apagado
+buttonNPC.Text = "AIM NPC: OFF"
 buttonNPC.Font = Enum.Font.GothamBold
 buttonNPC.TextSize = 10
-buttonNPC.TextColor3 = Color3.fromRGB(255, 255, 255)
-buttonNPC.Active = true
-buttonNPC.Draggable = true
-buttonNPC.Parent = gui
+buttonNPC.TextColor3 = Color3.fromRGB(135, 135, 140)
+buttonNPC.Parent = mainFrame
 
-local cornerNPC = Instance.new("UICorner")
-cornerNPC.CornerRadius = UDim.new(0, 6)
-cornerNPC.Parent = buttonNPC
+local npcCorner = Instance.new("UICorner")
+npcCorner.CornerRadius = UDim.new(0, 5)
+npcCorner.Parent = buttonNPC
 
-local strokeNPC = Instance.new("UIStroke")
-strokeNPC.Thickness = 1.2
-strokeNPC.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-strokeNPC.Parent = buttonNPC
-
--- 4. BOTÓN INTERRUPTOR: LOCK CAM
+-- INTERRUPTOR 3: LOCK CÁMARA REAL (AIMBOT SEPARADO)
 local buttonCAM = Instance.new("TextButton")
-buttonCAM.Size = UDim2.new(0, 65, 0, 30)
-buttonCAM.Position = UDim2.new(0.75, 85, 0, 122)
-buttonCAM.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
-buttonCAM.BackgroundTransparency = 0.2
-buttonCAM.Text = "LOCK: OFF"
+buttonCAM.Size = UDim2.new(0, 145, 0, 32)
+buttonCAM.Position = UDim2.new(0.06, 0, 0.72, 0)
+buttonCAM.BackgroundColor3 = Color3.fromRGB(24, 24, 26)
+buttonCAM.Text = "LOCK CAMERA: OFF"
 buttonCAM.Font = Enum.Font.GothamBold
 buttonCAM.TextSize = 10
-buttonCAM.TextColor3 = Color3.fromRGB(255, 255, 255)
-buttonCAM.Active = true
-buttonCAM.Draggable = true
-buttonCAM.Parent = gui
+buttonCAM.TextColor3 = Color3.fromRGB(135, 135, 140)
+buttonCAM.Parent = mainFrame
 
-local cornerCAM = Instance.new("UICorner")
-cornerCAM.CornerRadius = UDim.new(0, 6)
-cornerCAM.Parent = buttonCAM
+local camCorner = Instance.new("UICorner")
+camCorner.CornerRadius = UDim.new(0, 5)
+camCorner.Parent = buttonCAM
 
-local strokeCAM = Instance.new("UIStroke")
-strokeCAM.Thickness = 1.2
-strokeCAM.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-strokeCAM.Parent = buttonCAM
-
-coroutine.wrap(function()
-    while true do
-        for hue = 0, 1, 0.01 do
-            local color = Color3.fromHSV(hue, 0.75, 0.85)
-            strokePVP.Color = color
-            strokeNPC.Color = color
-            strokeCAM.Color = color
-            task.wait(0.02)
-        end
-    end
-end)()
+-- SISTEMA DINÁMICO DE INTERRUPTORES MONOCROMÁTICOS GRISES
 local function actualizarBotonPVP()
-    if aimPlayers then
-        buttonPVP.BackgroundColor3 = Color3.fromRGB(15, 30, 20)
-        buttonPVP.Text = "PVP: ON"
-    else
-        buttonPVP.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
-        buttonPVP.Text = "PVP: OFF"
-    end
+    buttonPVP.BackgroundColor3 = aimPlayers and Color3.fromRGB(35, 35, 38) or Color3.fromRGB(24, 24, 26)
+    buttonPVP.TextColor3 = aimPlayers and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(135, 135, 140)
+    buttonPVP.Text = aimPlayers and "AIM JUGADOR: ON" or "AIM JUGADOR: OFF"
 end
 
 local function actualizarBotonNPC()
-    if aimNPCs then
-        buttonNPC.BackgroundColor3 = Color3.fromRGB(15, 30, 20)
-        buttonNPC.Text = "NPC: ON"
-    else
-        buttonNPC.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
-        buttonNPC.Text = "NPC: OFF"
-    end
+    buttonNPC.BackgroundColor3 = aimNPCs and Color3.fromRGB(35, 35, 38) or Color3.fromRGB(24, 24, 26)
+    buttonNPC.TextColor3 = aimNPCs and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(135, 135, 140)
+    buttonNPC.Text = aimNPCs and "AIM NPC: ON" or "AIM NPC: OFF"
 end
 
--- LOCK CÁMARA
+-- SISTEMA LOCK CAM INTERPOLADO (Aimbot nativo de rastreo sutil)
 local function alternarLockCam()
     camLockActive = not camLockActive
     if camLockActive then
-        buttonCAM.BackgroundColor3 = Color3.fromRGB(15, 30, 20)
-        buttonCAM.Text = "LOCK: ON"
+        buttonCAM.BackgroundColor3 = Color3.fromRGB(35, 35, 38)
+        buttonCAM.TextColor3 = Color3.fromRGB(255, 255, 255)
+        buttonCAM.Text = "LOCK CAMERA: ON"
+        
+        -- Ejecución fluida de fijación a la mirada del rival
         camConnection = RunService.RenderStepped:Connect(function()
-            objetivoActual = obtenerObjetivoPro()
+            objetivoActual = obtenerObjetivoHermanos()
             if objetivoActual and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local actualCFrame = camera.CFrame
-                local destinoCFrame = CFrame.lookAt(camera.CFrame.Position, objetivoActual.Position)
-                camera.CFrame = actualCFrame:Lerp(destinoCFrame, 0.25)
+                -- El suavizado Lerp (0.22) acompaña los dashes del enemigo quirúrgicamente
+                camera.CFrame = camera.CFrame:Lerp(CFrame.lookAt(camera.CFrame.Position, objetivoActual.Position), 0.22)
             end
         end)
     else
-        buttonCAM.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
-        buttonCAM.Text = "LOCK: OFF"
+        buttonCAM.BackgroundColor3 = Color3.fromRGB(24, 24, 26)
+        buttonCAM.TextColor3 = Color3.fromRGB(135, 135, 140)
+        buttonCAM.Text = "LOCK CAMERA: OFF"
         if camConnection then camConnection:Disconnect() camConnection = nil end
     end
 end
 
+-- Eventos de clicks para los Toggles
 buttonPVP.TouchTap:Connect(function() aimPlayers = not aimPlayers; actualizarBotonPVP() end)
 buttonNPC.TouchTap:Connect(function() aimNPCs = not aimNPCs; actualizarBotonNPC() end)
 buttonCAM.TouchTap:Connect(alternarLockCam)
 
--- EJECUCIÓN TOTALMENTE COMPATIBLE CON MÓVILES (Usa RemoteEvents internos del juego)
-local function usarHabilidadMovil(tecla)
-    local character = player.Character
-    if not character then return end
-    
-    local tool = character:FindFirstChildOfClass("Tool")
-    if tool then
-        -- Método 1: Disparo directo por RemoteEvent del arma en Blox Fruits
-        local inputRemote = tool:FindFirstChild("Input") or tool:FindFirstChild("Remote") or tool:FindFirstChild("MainRemote")
-        if inputRemote and inputRemote:IsA("RemoteEvent") then
-            inputRemote:FireServer(tecla, "Down")
-            RunService.Heartbeat:Wait()
-            inputRemote:FireServer(tecla, "Up")
-        else
-            -- Método 2: Caída de respaldo por simulación de toque virtual si no lee el remoto
-            simularTouchMovel()
-        end
-    end
+-- Retroalimentación táctil de pulsación en botones del Hub original
+local function agregarEfectoPresionado(boton)
+    boton.TouchTap:Connect(function()
+        local originalColor = boton.BackgroundColor3
+        boton.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+        task.wait(0.06)
+        boton.BackgroundColor3 = originalColor
+    end)
 end
 
--- PRO AIMBOT SKILL SYSTEM
-local function alinearVectoresPro(objetivo)
-    local character = player.Character
-    if character and character:FindFirstChild("HumanoidRootPart") and objetivo then
-        local hrp = character.HumanoidRootPart
-        local vel = objetivo.Velocity or Vector3.new(0, 0, 0)
-        local posicionPredicha = objetivo.Position + (vel * 0.05)
-        
-        local targetRotation = CFrame.lookAt(hrp.Position, Vector3.new(posicionPredicha.X, hrp.Position.Y, posicionPredicha.Z))
-        hrp.CFrame = hrp.CFrame:Lerp(targetRotation, 0.9)
-        
-        if not camLockActive then
-            camera.CFrame = CFrame.lookAt(camera.CFrame.Position, objetivo.Position)
-        end
-        RunService.Heartbeat:Wait()
-    end
-end
-
-local function waitms(ms) task.wait(ms / 1000) end
-
--- COMBO REAL PORTAL META (Sincronizado nativamente sin trabas)
-local comboEjecutandose = false
-local function Combo()
-    if comboEjecutandose then return end
-    comboEjecutandose = true
-    
-    print("DEBUG: Boton LAUNCH presionado correctamente.")
-    buttonCombo.Text = "ACTIVE"
-
-    objetivoActual = obtenerObjetivoPro()
-    if not objetivoActual then 
-        print("DEBUG: No se encontro ningun objetivo en rango.")
-        buttonCombo.Text = "NO TARGET"
-        task.wait(1)
-        buttonCombo.Text = "LAUNCH"
-        comboEjecutandose = false 
-        return 
-    end
-
-    -- 1. Portal [Z]
-    equiparHerramientaPC(MI_SET.Fruit)
-    alinearVectoresPro(objetivoActual)
-    waitms(50)
-    usarHabilidadMovil("Z")
-    waitms(850)
-
-    -- 2. Soul Guitar [X]
-    equiparHerramientaPC(MI_SET.Gun)
-    alinearVectoresPro(objetivoActual)
-    waitms(50)
-    usarHabilidadMovil("X")
-    task.wait(0.4)
-
-    -- 3. Sanguine Art [Z]
-    equiparHerramientaPC(MI_SET.Melee)
-    alinearVectoresPro(objetivoActual)
-    waitms(50)
-    usarHabilidadMovil("Z")
-    task.wait(0.3)
-
-    -- 4. Sanguine Art [C]
-    alinearVectoresPro(objetivoActual)
-    usarHabilidadMovil("C")
-    task.wait(0.8)
-
-    -- 5. TTK [Z]
-    equiparHerramientaPC(MI_SET.Sword)
-    alinearVectoresPro(objetivoActual)
-    waitms(50)
-    usarHabilidadMovil("Z")
-    task.wait(0.35)
-
-    -- 6. Sanguine Art [X]
-    equiparHerramientaPC(MI_SET.Melee)
-    alinearVectoresPro(objetivoActual)
-    waitms(50)
-    usarHabilidadMovil("X")
-
-    buttonCombo.Text = "LAUNCH"
-    comboEjecutandose = false
-end
-
--- Listener táctil óptimo para pantallas móviles
-buttonCombo.TouchTap:Connect(function()
-    local tweenShrink = TweenService:Create(buttonCombo, TweenInfo.new(0.06), {Size = UDim2.new(0, 69, 0, 38)})
-    local tweenExpand = TweenService:Create(buttonCombo, TweenInfo.new(0.06), {Size = UDim2.new(0, 75, 0, 42)})
-    
-    tweenShrink:Play()
-    tweenShrink.Completed:Wait()
-    tweenExpand:Play()
-    Combo()
-end)
+agregarEfectoPresionado(buttonPVP)
+agregarEfectoPresionado(buttonNPC)
+agregarEfectoPresionado(buttonCAM)
