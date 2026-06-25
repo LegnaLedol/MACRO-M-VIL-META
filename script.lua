@@ -1,222 +1,299 @@
---[[
-    Legna Hub V9 - Multi-Game Intelligent Silent Aim (Duelos & Blox Fruits)
-    Features: PlaceId Match Check, Auto Ally Bypass for Duelos, Silent Bullet Magnet
-]]
-
--- Services
+--// QUANTUM AIMBOT v2.0 - BLOX FRUITS (FOV + Prediction + Silent Skills + Auto Closest)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local player = Players.LocalPlayer
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/shakar60/scripts/refs/heads/main/ac%20bypass", true))()
+
+--[[
+loadstring(game:HttpGet("https://githubusercontent.com", true))()
+loadstring(game:HttpGet("https://githubusercontent.com"))()
+]]
+
+local plr = game:GetService("Players").LocalPlayer
+local cclosure = syn_newcclosure or newcclosure or nil
+
+if not cclosure or not hookmetamethod then
+    plr:Kick("\n\nYour exploit doesn't support hookmetamethod\n")
+end
+
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", cclosure(function(self, ...)
+    local NamecallMethod = getnamecallmethod()
+    local args = { ... }
+    if (NamecallMethod == "Kick" or NamecallMethod == "kick") and not checkcaller() then
+        if self ~= plr then
+            return oldNamecall(self, ...)
+        end
+        return
+    end
+    return oldNamecall(self, ...)
+end))
+
+for wendigo, iscool in pairs(getgc(true)) do
+    if pcall(function() return rawget(iscool, "indexInstance") end)
+    and type(rawget(iscool, "indexInstance")) == "table"
+    and rawget(iscool, "indexInstance")[1] == "Kick" then -- CORREGIDO: Ahora busca el string dentro de la tabla
+        iscool.tvk = {"kick", function()
+            return game.Workspace:WaitForChild("")
+        end}
+    end
+end
+
+local getinfo = getinfo or debug.getinfo
+local DEBUG = false
+local Hooked = {}
+
+local Detected, Kill
+
+setthreadidentity(2)
+
+for i, v in pairs(getgc(true)) do
+    if typeof(v) == "table" then
+        local DetectFunc = rawget(v, "Detected")
+        local KillFunc = rawget(v, "Kill")
+        
+        if typeof(DetectFunc) == "function" and not Detected then
+            Detected = DetectFunc
+            
+            local old; old = hookfunction(Detected, function(Action, Info, NoCrash)
+                if Action ~= "_" then
+                    return old("_", Info, NoCrash)
+                end
+                return old(Action, Info, NoCrash)
+            end)
+        end
+    end
+end
+
+
+if player.PlayerGui:FindFirstChild("QuantumAimbotV2") then
+    player.PlayerGui.QuantumAimbotV2:Destroy()
+end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "QuantumAimbotV2"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0, 320, 0, 480)
+main.Position = UDim2.new(0.5, -160, 0.5, -240)
+main.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
+
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1, 0, 0, 50)
+title.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+title.Text = "Quantum Aimbot v2.0"
+title.TextColor3 = Color3.new(1,1,1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+Instance.new("UICorner", title).CornerRadius = UDim.new(0, 12)
+
+-- Draggable + Minimize
+local dragging, dragStart, startPos
+title.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true dragStart = i.Position startPos = main.Position end end)
+UserInputService.InputChanged:Connect(function(i)
+    if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = i.Position - dragStart
+        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+
+local minBtn = Instance.new("TextButton", title)
+minBtn.Size = UDim2.new(0, 40, 0, 40)
+minBtn.Position = UDim2.new(1, -45, 0, 5)
+minBtn.Text = "–"
+minBtn.BackgroundColor3 = Color3.fromRGB(0,180,0)
+minBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", minBtn).CornerRadius = UDim.new(1,0)
+minBtn.MouseButton1Click:Connect(function() main.Visible = false end)
 
 -- Variables
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-local Camera = workspace.CurrentCamera
-local HeartbeatConnection = nil
-local IsAimbotActive = false
-local CurrentPlaceId = game.PlaceId
+local aimbotEnabled = false
+local autoClosest = true
+local selectedTarget = nil
+local fovRadius = 150
 
--- UI Notification System
-local function ShowNotification(message, color)
-    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
-    if not PlayerGui then return end
+-- FOV Circle
+local fovCircle = Drawing.new("Circle")
+fovCircle.Thickness = 2
+fovCircle.Color = Color3.fromRGB(255, 100, 0)
+fovCircle.Transparency = 0.7
+fovCircle.Filled = false
+fovCircle.Radius = fovRadius
+fovCircle.Visible = true
 
-    local OldGui = PlayerGui:FindFirstChild("LegnaNotification")
-    if OldGui then OldGui:Destroy() end
+-- UI Buttons
+local toggleBtn = Instance.new("TextButton", main)
+toggleBtn.Size = UDim2.new(0.9,0,0,55)
+toggleBtn.Position = UDim2.new(0.05,0,0,60)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(45,45,55)
+toggleBtn.Text = "AIMBOT [OFF]"
+toggleBtn.TextColor3 = Color3.new(1,1,1)
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.TextSize = 20
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,10)
 
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "LegnaNotification"
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.Parent = PlayerGui
+local closestBtn = Instance.new("TextButton", main)
+closestBtn.Size = UDim2.new(0.9,0,0,50)
+closestBtn.Position = UDim2.new(0.05,0,0,125)
+closestBtn.BackgroundColor3 = Color3.fromRGB(45,45,55)
+closestBtn.Text = "Auto Closest [ON]"
+closestBtn.TextColor3 = Color3.new(1,1,1)
+closestBtn.Font = Enum.Font.Gotham
+closestBtn.TextSize = 18
+Instance.new("UICorner", closestBtn).CornerRadius = UDim.new(0,10)
 
-    local Frame = Instance.new("Frame")
-    Frame.Size = UDim2.new(0, 240, 0, 45)
-    Frame.Position = UDim2.new(0.5, -120, -0.1, 0)
-    Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    Frame.BorderSizePixel = 0
-    Frame.Parent = ScreenGui
+local selectBtn = Instance.new("TextButton", main)
+selectBtn.Size = UDim2.new(0.9,0,0,50)
+selectBtn.Position = UDim2.new(0.05,0,0,185)
+selectBtn.BackgroundColor3 = Color3.fromRGB(45,45,55)
+selectBtn.Text = "Select Player"
+selectBtn.TextColor3 = Color3.new(1,1,1)
+selectBtn.Font = Enum.Font.Gotham
+selectBtn.TextSize = 18
+Instance.new("UICorner", selectBtn).CornerRadius = UDim.new(0,10)
 
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 6)
-    UICorner.Parent = Frame
+local status = Instance.new("TextLabel", main)
+status.Size = UDim2.new(0.9,0,0,40)
+status.Position = UDim2.new(0.05,0,0,245)
+status.Text = "Status: Idle"
+status.TextColor3 = Color3.fromRGB(0,255,120)
+status.Font = Enum.Font.Gotham
+status.TextSize = 16
+status.BackgroundTransparency = 1
 
-    local TextLabel = Instance.new("TextLabel")
-    TextLabel.Size = UDim2.new(1, 0, 1, 0)
-    TextLabel.Text = message
-    TextLabel.TextColor3 = color or Color3.fromRGB(0, 255, 150)
-    TextLabel.TextSize = 13
-    TextLabel.Font = Enum.Font.SourceSansBold
-    TextLabel.BackgroundTransparency = 1
-    TextLabel.Parent = Frame
+-- Player List (for manual select)
+local listFrame = Instance.new("ScrollingFrame", main)
+listFrame.Size = UDim2.new(0.9,0,0,160)
+listFrame.Position = UDim2.new(0.05,0,0,295)
+listFrame.BackgroundColor3 = Color3.fromRGB(30,30,35)
+listFrame.ScrollBarThickness = 6
+Instance.new("UICorner", listFrame).CornerRadius = UDim.new(0,10)
+listFrame.Visible = false
 
-    Frame:TweenPosition(UDim2.new(0.5, -120, 0.05, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.4, true)
-    
-    task.spawn(function()
-        task.wait(2.5)
-        Frame:TweenPosition(UDim2.new(0.5, -120, -0.1, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quart, 0.4, true)
-        task.wait(0.4)
-        ScreenGui:Destroy()
-    end)
-end
-
--- Universal Mortal Target Scan with Game Detection
-local function IsValidTarget(player)
-    if player == LocalPlayer then return false end
-    
-    local character = player.Character
-    if not character then return false end
-    
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
-    if not humanoid or not rootPart or humanoid.Health <= 0 then 
-        return false 
-    end
-    
-    if character:FindFirstChildOfClass("ForceField") then 
-        return false 
-    end
-
-    -- [CRITICAL FIX] If playing "Duelos" (or any match base game), strictly ignore same team members
-    -- Uses a loose check if PlaceId matches common shooter IDs or if team exists and matches
-    if player.Team and player.Team == LocalPlayer.Team then
-        -- Only filter teams if we are NOT in Blox Fruits (Blox Fruits PlaceId starts with 275 or 444)
-        local strId = tostring(CurrentPlaceId)
-        if not (string.sub(strId, 1, 3) == "275" or string.sub(strId, 1, 3) == "444") then
-            return false -- It's a real teammate in Duelos, IGNORE HIM!
-        end
-    end
-
-    return true
-end
-
-local function GetClosestTarget()
-    local ClosestTarget = nil
-    local MaxDistance = math.huge
-    local MyChar = LocalPlayer.Character
-    local MyRoot = MyChar and MyChar:FindFirstChild("HumanoidRootPart")
-
-    if not MyRoot then return nil end
-
-    for _, Player in ipairs(Players:GetPlayers()) do
-        if IsValidTarget(Player) then
-            local TargetRoot = Player.Character.HumanoidRootPart
-            local Distance = (MyRoot.Position - TargetRoot.Position).Magnitude
-            if Distance < MaxDistance then
-                MaxDistance = Distance
-                ClosestTarget = TargetRoot
+local function refreshList()
+    for _,v in ipairs(listFrame:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr \~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (root.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+            if dist <= 500 then
+                local btn = Instance.new("TextButton", listFrame)
+                btn.Size = UDim2.new(1,-10,0,38)
+                btn.BackgroundColor3 = Color3.fromRGB(50,50,60)
+                btn.Text = plr.Name .. " ("..math.floor(dist).."m)"
+                btn.TextColor3 = Color3.new(1,1,1)
+                Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
+                btn.MouseButton1Click:Connect(function()
+                    selectedTarget = plr
+                    status.Text = "Locked: "..plr.Name
+                    listFrame.Visible = false
+                end)
             end
         end
     end
-    return ClosestTarget
 end
 
--- Hooking Engine: Intercepts Mouse.Hit and Mouse.Target
-local function HookMouseData()
-    local RawMetatable = getrawmetatable(game)
-    setreadonly(RawMetatable, false)
-    local OldIndex = RawMetatable.__index
+-- Button Logic
+toggleBtn.MouseButton1Click:Connect(function()
+    aimbotEnabled = not aimbotEnabled
+    toggleBtn.Text = "AIMBOT ["..(aimbotEnabled and "ON ✅" or "OFF").."]"
+    toggleBtn.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(0,200,80) or Color3.fromRGB(45,45,55)
+end)
 
-    RawMetatable.__index = newcclosure(function(self, index)
-        if IsAimbotActive and self == Mouse then
-            local Target = GetClosestTarget()
-            if Target then
-                local TargetPart = Target.Parent:FindFirstChild("Head") or Target
-                if index == "Hit" then
-                    return TargetPart.CFrame
-                elseif index == "Target" then
-                    return TargetPart
+closestBtn.MouseButton1Click:Connect(function()
+    autoClosest = not autoClosest
+    closestBtn.Text = "Auto Closest ["..(autoClosest and "ON" or "OFF").."]"
+    closestBtn.BackgroundColor3 = autoClosest and Color3.fromRGB(0,200,80) or Color3.fromRGB(45,45,55)
+end)
+
+selectBtn.MouseButton1Click:Connect(function()
+    listFrame.Visible = not listFrame.Visible
+    if listFrame.Visible then refreshList() end
+end)
+
+-- Main Aimbot Loop with Prediction + Silent Skills
+local aimConn
+local function startAimbot()
+    if aimConn then aimConn:Disconnect() end
+    aimConn = RunService.RenderStepped:Connect(function(dt)
+        if not aimbotEnabled then return end
+
+        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        -- Auto Closest
+        if autoClosest then
+            local closest, minDist = nil, math.huge
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr \~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = (root.Position - plr.Character.HumanoidRootPart.Position).Magnitude
+                    if dist < minDist and dist <= 500 then
+                        minDist = dist
+                        closest = plr
+                    end
                 end
             end
+            selectedTarget = closest
         end
-        return OldIndex(self, index)
-    end)
-    setreadonly(RawMetatable, true)
-end
 
--- Camera Rotation Step Engine
-local function StartTracking()
-    if HeartbeatConnection then return end
-
-    HeartbeatConnection = RunService.RenderStepped:Connect(function()
-        local MyChar = LocalPlayer.Character
-        local MyRoot = MyChar and MyChar:FindFirstChild("HumanoidRootPart")
-        if not MyRoot then return end
-
-        local Target = GetClosestTarget()
-        if Target then
-            local TargetVelocity = Target.AssemblyLinearVelocity or Vector3.new(0, 0, 0)
-            local PredictedPosition = Target.Position + (TargetVelocity * 0.05)
-
-            -- Rotate character base cleanly towards target axis
-            MyRoot.CFrame = CFrame.lookAt(MyRoot.Position, Vector3.new(PredictedPosition.X, MyRoot.Position.Y, PredictedPosition.Z))
-
-            -- Head Anchor Matrix
-            local CameraDistance = 11
-            local CameraHeight = 3.5
-            local DirectionVector = (PredictedPosition - MyRoot.Position).Unit
-            
-            local TargetCameraCFrame = MyRoot.Position - (DirectionVector * CameraDistance) + Vector3.new(0, CameraHeight, 0)
-            Camera.CFrame = CFrame.lookAt(TargetCameraCFrame, PredictedPosition)
+        if not selectedTarget or not selectedTarget.Character then
+            status.Text = "No Target"
+            return
         end
-    end)
-end
 
-local function StopTracking()
-    if HeartbeatConnection then
-        HeartbeatConnection:Disconnect()
-        HeartbeatConnection = nil
-    end
-end
+        local targetRoot = selectedTarget.Character:FindFirstChild("HumanoidRootPart")
+        local targetHead = selectedTarget.Character:FindFirstChild("Head")
+        if not targetRoot or not targetHead then return end
 
--- Micro Position Tactical Button
-local function CreateTacticalButton()
-    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
-    if not PlayerGui then return end
-
-    local OldButton = PlayerGui:FindFirstChild("LegnaInvisibleTrigger")
-    if OldButton then OldButton:Destroy() end
-
-    local InvisibleGui = Instance.new("ScreenGui")
-    InvisibleGui.Name = "LegnaInvisibleTrigger"
-    InvisibleGui.ResetOnSpawn = false
-    InvisibleGui.Parent = PlayerGui
-
-    local HitboxButton = Instance.new("TextButton")
-    HitboxButton.Size = UDim2.new(0, 40, 0, 40)
-    HitboxButton.Position = UDim2.new(0, 8, 0, 0) 
-    
-    HitboxButton.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
-    HitboxButton.BackgroundTransparency = 0.8
-    HitboxButton.BorderSizePixel = 0
-    HitboxButton.Text = "L"
-    HitboxButton.TextColor3 = Color3.fromRGB(180, 180, 180)
-    HitboxButton.TextSize = 10
-    HitboxButton.Font = Enum.Font.Code
-    HitboxButton.Parent = InvisibleGui
-
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 8)
-    UICorner.Parent = HitboxButton
-
-    HitboxButton.Activated:Connect(function()
-        IsAimbotActive = not IsAimbotActive
-        if IsAimbotActive then
-            StartTracking()
-            ShowNotification("LEGNA: SMART LOCK SYSTEM ON", Color3.fromRGB(0, 255, 120))
-            HitboxButton.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
-            HitboxButton.BackgroundTransparency = 0.6
-        else
-            StopTracking()
-            ShowNotification("LEGNA: DISENGAGED", Color3.fromRGB(255, 70, 70))
-            HitboxButton.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
-            HitboxButton.BackgroundTransparency = 0.8
+        local dist = (root.Position - targetRoot.Position).Magnitude
+        if dist > 500 then
+            status.Text = "Target too far"
+            return
         end
+
+        -- Prediction (lead target)
+        local velocity = targetRoot.Velocity
+        local predictedPos = targetHead.Position + (velocity * 0.12)  -- prediction strength
+
+        -- Smooth Camera Lock
+        local lookAt = CFrame.lookAt(Camera.CFrame.Position, predictedPos)
+        Camera.CFrame = Camera.CFrame:Lerp(lookAt, 0.35)
+
+        -- Silent Skill Activation (Z X C V)
+        local tool = player.Character:FindFirstChildOfClass("Tool")
+        if tool and dist < 120 then
+            tool:Activate()
+        end
+        -- Auto press skills when locked
+        if dist < 80 then
+            game:service("VirtualInputManager"):SendKeyEvent(true, "Z", false, game)
+            task.wait(0.1)
+            game:service("VirtualInputManager"):SendKeyEvent(false, "Z", false, game)
+        end
+
+        status.Text = "Aiming: " .. selectedTarget.Name .. " (" .. math.floor(dist) .. "m)"
     end)
 end
 
--- Initialization
-HookMouseData()
-task.spawn(function()
-    ShowNotification("Legna Hub Smart V9 Loaded.", Color3.fromRGB(0, 220, 255))
+toggleBtn.MouseButton1Click:Connect(function()
+    if aimbotEnabled then startAimbot() else if aimConn then aimConn:Disconnect() end end
 end)
-task.spawn(CreateTacticalButton)
+
+-- Update FOV Circle
+RunService.RenderStepped:Connect(function()
+    fovCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    fovCircle.Radius = fovRadius
+    fovCircle.Visible = true
+end)
+
+print("✅ Quantum Aimbot v2.0 Loaded Successfully")
+print("• FOV Circle + Prediction + Silent Skills + Auto Closest")
+print("Select player or turn on Auto Closest → Toggle Aimbot")
